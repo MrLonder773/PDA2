@@ -1,0 +1,67 @@
+#pragma once
+
+// ════════════════════════════════════════════════════════
+//  PDA 2 — PDA2.h
+//  ЕДИНСТВЕННЫЙ include во всём проекте.
+//  Паттерн: M5Unified. Один глобальный объект PDA,
+//  подсистемы — value members, прямой доступ.
+//
+//  В любом файле проекта:
+//    #include <PDA2.h>
+//    PDA.Rtc.get() / PDA.Apps.open(0) / PDA.toast("ok")
+// ════════════════════════════════════════════════════════
+
+#include "pda2_config.h"
+#include "pda2_log.h"
+#include "PDA2App.h"
+
+#include "utility/Display_Class.h"
+#include "utility/Touch_Class.h"
+#include "utility/Rtc_Class.h"
+#include "utility/Imu_Class.h"
+#include "utility/Fs_Class.h"
+#include "utility/Prefs_Class.h"
+#include "utility/Apps_Class.h"
+
+#include <Arduino.h>
+#include <Wire.h>
+#include <lvgl.h>
+
+namespace pda2 {
+
+// ── Конфигурация begin() — вне PDA2Class (требование GCC) ─
+struct config_t {
+    uint8_t  brightness = 200;
+    uint8_t  rotation   = PDA2_ROTATION;
+    bool     load_prefs = true;   // загрузить brightness/rotation из NVS
+};
+
+class PDA2Class {
+public:
+    // ── Подсистемы — value members, прямой доступ ────────
+    Display_Class  Display;
+    Touch_Class    Touch;
+    Rtc_Class      Rtc;
+    Imu_Class      Imu;
+    Fs_Class       Fs;
+    Prefs_Class    Prefs;
+    Apps_Class     Apps;
+
+    // ── Lifecycle ─────────────────────────────────────────
+    void     begin(config_t cfg = config_t());
+    void     update();
+    config_t config() const { return config_t{}; }
+
+    // ── Утилиты ───────────────────────────────────────────
+    void     toast(const char* text, uint32_t ms = 2000);
+    uint32_t freeHeap();
+    uint32_t freePsram();
+
+private:
+    uint32_t _last_tick_ms = 0;
+};
+
+} // namespace pda2
+
+// ── Глобальный экземпляр — объявлен в PDA2.cpp ───────────
+extern pda2::PDA2Class PDA;
