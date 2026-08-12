@@ -77,10 +77,30 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             _touching       = true;
             _swipe_start_y  = ty;
             _swipe_start_ms = millis();
+            // ── QP: запомнить старт ──────────────────────
+            _instance->_qp_start_x = (int16_t)tx;
+            _instance->_qp_start_y = (int16_t)ty;
+            _instance->_qp_fired   = false;
         }
         // Обновляем последнюю позицию каждый фрейм
         _swipe_last_y = ty;
 
+        // ── QP: детект свайпа вниз из верхней зоны ──────
+        if (!_instance->_qp_fired && _instance->_qp_start_y >= 0) {
+            int32_t eff_h = (_instance->_rotation == 1 || _instance->_rotation == 3)
+                            ? PDA2_SCREEN_W : PDA2_SCREEN_H;
+            if (_instance->_qp_start_y < (eff_h * PDA2_QP_SWIPE_TOP_PCT / 100)) {
+                int32_t dy = ty - _instance->_qp_start_y;  // > 0 = вниз
+                if (dy > 40) {
+                    _instance->_qp_fired = true;
+                    if (_instance->_qp_start_x < PDA2_SCREEN_W / 2) {
+                        if (_instance->onSwipeDownLeft)  _instance->onSwipeDownLeft();
+                    } else {
+                        if (_instance->onSwipeDownRight) _instance->onSwipeDownRight();
+                    }
+                }
+            }
+        }
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
 
@@ -106,6 +126,9 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             }
             _swipe_start_y = -1;
             _swipe_last_y  = -1;
+            // ── QP: сброс ────────────────────────────────
+            _instance->_qp_start_x = -1;
+            _instance->_qp_start_y = -1;
         }
         _touching = false;
     }

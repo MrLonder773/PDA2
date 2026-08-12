@@ -16,12 +16,16 @@
 #include "PDA2App.h"
 
 #include "utility/Display_Class.h"
-#include "utility/Touch_Class.h"
-#include "utility/Rtc_Class.h"
-#include "utility/Imu_Class.h"
 #include "utility/Fs_Class.h"
 #include "utility/Prefs_Class.h"
 #include "utility/Apps_Class.h"
+#include "utility/QuickPanel_Class.h"
+#include "utility/Font_Class.h"
+#include "utility/Usb_Class.h"
+#include "utility/Bt_Class.h"       // ← добавлено
+#include "utility/Touch_Class.h"
+#include "utility/Rtc_Class.h"
+#include "utility/Imu_Class.h"
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -29,39 +33,40 @@
 
 namespace pda2 {
 
-// ── Конфигурация begin() — вне PDA2Class (требование GCC) ─
 struct config_t {
     uint8_t  brightness = 200;
     uint8_t  rotation   = PDA2_ROTATION;
-    bool     load_prefs = true;   // загрузить brightness/rotation из NVS
+    bool     load_prefs = true;
 };
 
 class PDA2Class {
 public:
-    // ── Подсистемы — value members, прямой доступ ────────
-    Display_Class  Display;
-    Touch_Class    Touch;
-    Rtc_Class      Rtc;
-    Imu_Class      Imu;
-    Fs_Class       Fs;
-    Prefs_Class    Prefs;
-    Apps_Class     Apps;
+    Display_Class    Display;
+    Fs_Class         Fs;
+    Prefs_Class      Prefs;
+    Apps_Class       Apps;
+    QuickPanel_Class QuickPanel;
+    Font_Class       Fonts;
+    Usb_Class        Usb;
+    Bt_Class         Bt;            // ← добавлено
+    Touch_Class      Touch;
+    Rtc_Class        Rtc;
+    Imu_Class        Imu;
 
-    // ── Lifecycle ─────────────────────────────────────────
     void     begin(config_t cfg = config_t());
     void     update();
     config_t config() const { return config_t{}; }
 
-    // ── Утилиты ───────────────────────────────────────────
     void     toast(const char* text, uint32_t ms = 2000);
     uint32_t freeHeap();
     uint32_t freePsram();
+    void     notify(const char* app_name, const char* text);
 
 private:
-    uint32_t _last_tick_ms = 0;
+    uint32_t _last_tick_ms       = 0;
+    bool     _bt_restore_pending = false;  // ← добавлено
 };
 
 } // namespace pda2
 
-// ── Глобальный экземпляр — объявлен в PDA2.cpp ───────────
 extern pda2::PDA2Class PDA;

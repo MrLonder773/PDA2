@@ -158,3 +158,7 @@ uint8_t Display_Class::getRotation() { return _rotation; }
 
 int Display_Class::width()  { return _lcd.width(); }
 int Display_Class::height() { return _lcd.height(); }
+
+lgfx::v1::LGFX_Device& Display_Class::raw() {
+    return _lcd;
+}

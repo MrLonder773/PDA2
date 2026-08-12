@@ -4,7 +4,7 @@
 //  PDA 2 — Prefs_Class.h
 //  NVS-обёртка. Хранит настройки между перезагрузками.
 // ════════════════════════════════════════════════════════
-
+#include <Arduino.h>
 #include <stdint.h>
 
 class Prefs_Class {
@@ -30,4 +30,18 @@ public:
     // Последнее открытое приложение
     int8_t  getLastApp();
     void    setLastApp(int8_t id);
+
+    // WiFi (default: true)
+    bool    getWifi();
+    void    setWifi(bool val);
+
+     // Bluetooth 
+    bool    getBtEnabled();
+    void    setBtEnabled(bool val);
+    String  getBtLastDevice();          // "aa:bb:cc:dd:ee:ff" (lowercase)
+    void    setBtLastDevice(const String& mac);
+    uint8_t getBtLastDeviceType();      // 0=public, 1=random (default 1)
+    void    setBtLastDeviceType(uint8_t t);
+    String getBtLastDeviceName();
+    void   setBtLastDeviceName(const String& name);
 };

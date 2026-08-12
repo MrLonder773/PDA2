@@ -21,7 +21,7 @@
 // ── DPI ─────────────────────────────────────────
 #define LV_DPI_DEF  130
 
-// ── Шрифты ──────────────────────────────────────
+// ── Встроенные шрифты (латиница + цифры) ────────
 #define LV_FONT_MONTSERRAT_10  1
 #define LV_FONT_MONTSERRAT_12  1
 #define LV_FONT_MONTSERRAT_14  1
@@ -33,8 +33,14 @@
 
 #define LV_FONT_DEFAULT  &lv_font_montserrat_14
 
-// ── Кириллица — после конвертации шрифта
-// #define LV_FONT_CUSTOM_DECLARE  extern const lv_font_t pda_font_16;
+// ── Кастомные шрифты (кириллица + ASCII + стрелки)
+//    Файлы: lib/PDA2Core/src/fonts/pda2_cyrillic_*.c
+#define LV_FONT_CUSTOM_DECLARE       \
+    extern const lv_font_t pda2_cyrillic_12; \
+    extern const lv_font_t pda2_cyrillic_14; \
+    extern const lv_font_t pda2_cyrillic_16; \
+    extern const lv_font_t pda2_cyrillic_20; \
+    extern const lv_font_t pda2_cyrillic_24;
 
 // ── Анимации ────────────────────────────────────
 #define LV_USE_ANIM  1   // в LVGL 9.x — LV_USE_ANIM, не LV_USE_ANIMATION

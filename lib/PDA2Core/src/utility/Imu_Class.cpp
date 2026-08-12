@@ -1,13 +1,15 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 — Imu_Class.cpp
 //  BMI160: chip_id=0xD1, accel 0x12, gyro 0x0C.
+//  На PDA2_LITE — BMI160 не разведён (см. pda2_config.h),
+//  ниже заглушка, всегда _ok=false.
 // ════════════════════════════════════════════════════════
 
 #include "Imu_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
-#include <Wire.h>
 #include <Arduino.h>
+#include <Wire.h>
 
 #define BMI160_REG_CHIP_ID    0x00
 #define BMI160_REG_CMD        0x7E

@@ -34,3 +34,4 @@
 //   "core"     "display"   "touch"   "rtc"
 //   "imu"      "fs"        "apps"    "prefs"
 //   "clock"    "notes"     "files"   "accel"   "settings"
+//   "qpanel"   "espnow"    "audio"   "walkie"

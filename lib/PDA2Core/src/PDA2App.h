@@ -31,6 +31,8 @@ public:
 
     // Вызывается каждый фрейм пока приложение свёрнуто
     virtual void onBackground() {}
+
+    virtual void onKey(uint8_t keycode, uint8_t modifier) {}  // ← добавлено
 };
 
 // ════════════════════════════════════════════════════════

@@ -14,6 +14,9 @@ public:
     // onHomeGesture — устанавливается из PDA2.cpp при begin()
     std::function<void()> onHomeGesture = nullptr;
 
+    void (*onSwipeDownLeft)()  = nullptr;
+    void (*onSwipeDownRight)() = nullptr;
+
     void begin(uint8_t rotation);
     void setRotation(uint8_t r);
     bool ok() const { return _ok; }
@@ -32,4 +35,8 @@ private:
     static bool     _touching;
 
     static void _read_cb(lv_indev_t* indev, lv_indev_data_t* data);
+    
+    int16_t _qp_start_x = -1;
+    int16_t _qp_start_y = -1;
+    bool    _qp_fired   = false;
 };

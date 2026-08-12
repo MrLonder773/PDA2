@@ -53,3 +53,20 @@ int8_t Prefs_Class::getLastApp() {
 void Prefs_Class::setLastApp(int8_t id) {
     _prefs.putChar("last_app", id);
 }
+
+bool Prefs_Class::getWifi() {
+    return _prefs.getBool("wifi", true);
+}
+
+void Prefs_Class::setWifi(bool val) {
+    _prefs.putBool("wifi", val);
+}
+
+bool   Prefs_Class::getBtEnabled()                { return _prefs.getBool("bt_en", false); }
+void   Prefs_Class::setBtEnabled(bool v)          { _prefs.putBool("bt_en", v); }
+String Prefs_Class::getBtLastDevice()             { return _prefs.getString("bt_last", ""); }
+void   Prefs_Class::setBtLastDevice(const String& m) { _prefs.putString("bt_last", m); }
+uint8_t Prefs_Class::getBtLastDeviceType()        { return _prefs.getUChar("bt_last_t", 1); }
+void   Prefs_Class::setBtLastDeviceType(uint8_t t){ _prefs.putUChar("bt_last_t", t); }
+String Prefs_Class::getBtLastDeviceName()               { return _prefs.getString("bt_last_n", ""); }
+void   Prefs_Class::setBtLastDeviceName(const String& n){ _prefs.putString("bt_last_n", n); }
