@@ -135,6 +135,7 @@ bool Display_Class::begin(uint8_t brightness, uint8_t rotation) {
                        LV_DISPLAY_RENDER_MODE_FULL);
 
     PDA_LOGI("display", "LVGL 9.2.1 ready");
+    PDA.Apps.add(new ClockApp());
     return true;  // [A-06]
 }
 
