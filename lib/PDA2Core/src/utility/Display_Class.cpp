@@ -95,7 +95,7 @@ static uint32_t _tick_cb() {
 
 // ── Реализация Display_Class ─────────────────────────────
 bool Display_Class::begin(uint8_t brightness, uint8_t rotation) {
-    _brightness = brightness;
+    _brightness = 20;
     _rotation   = rotation;
 
     pinMode(PDA2_PIN_RST, OUTPUT);
