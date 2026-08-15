@@ -9,8 +9,7 @@
 #include "Touch_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
-#include <Wire.h>
-#include <Arduino.h>
+#include "../pda2_platform.h"
 
 // ── Статические члены ────────────────────────────────────
 lv_indev_t* Touch_Class::_indev          = nullptr;
@@ -21,27 +20,6 @@ bool        Touch_Class::_touching       = false;
 
 // ── Глобальный указатель на экземпляр для callback ──────
 static Touch_Class* _instance = nullptr;
-
-// ── Чтение FT6236 ────────────────────────────────────────
-static bool _ft6236_read(int32_t& raw_x, int32_t& raw_y) {
-    Wire.beginTransmission(PDA2_I2C_TOUCH);
-    Wire.write(0x02);   // TD_STATUS
-    if (Wire.endTransmission(false) != 0) return false;
-    Wire.requestFrom((uint8_t)PDA2_I2C_TOUCH, (uint8_t)5);
-    if (Wire.available() < 5) return false;
-
-    uint8_t td  = Wire.read();    // 0x02 — число точек
-    uint8_t xh  = Wire.read();    // 0x03
-    uint8_t xl  = Wire.read();    // 0x04
-    uint8_t yh  = Wire.read();    // 0x05
-    uint8_t yl  = Wire.read();    // 0x06
-
-    if ((td & 0x0F) == 0) return false;
-
-    raw_x = ((int32_t)(xh & 0x0F) << 8) | xl;
-    raw_y = ((int32_t)(yh & 0x0F) << 8) | yl;
-    return true;
-}
 
 // ── Трансформация координат по rotation ──────────────────
 static void _transform(int32_t raw_x, int32_t raw_y,
@@ -62,11 +40,18 @@ static void _transform(int32_t raw_x, int32_t raw_y,
 // ── LVGL indev read callback ─────────────────────────────
 void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
     int32_t raw_x, raw_y;
-    bool pressed = _ft6236_read(raw_x, raw_y);
+    bool pressed = pda2_platform_touch_read(raw_x, raw_y);
 
     if (pressed) {
         int32_t tx, ty;
+#ifndef PDA2_SIM
         _transform(raw_x, raw_y, tx, ty, _instance->_rotation);
+#else
+        // На PC мышь уже в конечном логическом пространстве окна —
+        // корректировать физическую ориентацию сенсора нечего.
+        tx = raw_x;
+        ty = raw_y;
+#endif
 
         data->point.x = tx;
         data->point.y = ty;
@@ -76,7 +61,7 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             // Начало касания
             _touching       = true;
             _swipe_start_y  = ty;
-            _swipe_start_ms = millis();
+            _swipe_start_ms = pda2_platform_now_ms();
             // ── QP: запомнить старт ──────────────────────
             _instance->_qp_start_x = (int16_t)tx;
             _instance->_qp_start_y = (int16_t)ty;
@@ -108,7 +93,7 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             int32_t screen_h = (_instance->_rotation == 1 || _instance->_rotation == 3)
                                ? PDA2_SCREEN_W
                                : PDA2_SCREEN_H;
-            uint32_t elapsed  = millis() - _swipe_start_ms;
+            uint32_t elapsed  = pda2_platform_now_ms() - _swipe_start_ms;
             int32_t  delta_y  = _swipe_start_y - _swipe_last_y;  // > 0 = движение вверх
 
             // Условия свайп-home:
@@ -139,18 +124,8 @@ void Touch_Class::begin(uint8_t rotation) {
     _instance = this;
     _rotation = rotation;
 
-    // RST
-    pinMode(PDA2_PIN_TOUCH_RST, OUTPUT);
-    digitalWrite(PDA2_PIN_TOUCH_RST, LOW);
-    delay(10);
-    digitalWrite(PDA2_PIN_TOUCH_RST, HIGH);
-    delay(100);
-
-    // Проверить наличие FT6236
-    Wire.beginTransmission(PDA2_I2C_TOUCH);
-    uint8_t err = Wire.endTransmission();
-    if (err != 0) {
-        PDA_LOGE("touch", "FT6236 not found (err=%d)", err);
+    if (!pda2_platform_touch_begin()) {
+        PDA_LOGE("touch", "touch device not found");
         _ok = false;
         return;
     }
@@ -161,7 +136,7 @@ void Touch_Class::begin(uint8_t rotation) {
     lv_indev_set_read_cb(_indev, _read_cb);
 
     _ok = true;
-    PDA_LOGI("touch", "FT6236 ok, LVGL indev created");
+    PDA_LOGI("touch", "touch ok, LVGL indev created");
 }
 
 void Touch_Class::setRotation(uint8_t r) {

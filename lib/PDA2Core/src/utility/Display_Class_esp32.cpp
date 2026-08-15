@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════
-//  PDA 2 — Display_Class.cpp
+//  PDA 2 — Display_Class_esp32.cpp
 //  LovyanGFX LGFX_PDA2 + LVGL 9.x RENDER_MODE_FULL
 //
 //  Почему FULL:
@@ -9,11 +9,19 @@
 //    Один буфер в PSRAM (~300KB). Два буфера — PSRAM bus contention (BL-1).
 //
 //  Fade-анимации запрещены — вызывают затемнение на ILI9488.
+//
+//  Компилируется, только если PDA2_SIM НЕ определён —
+//  в сборке симулятора тело пустое (см. Display_Class_sim.cpp).
+//  raw() — только здесь, PC-эквивалента нет и не будет
+//  (см. пояснение в Display_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 
 #include "Display_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
+#include "../pda2_platform.h"
+
+#ifndef PDA2_SIM
 
 #include <LovyanGFX.hpp>
 #include <lvgl.h>
@@ -90,7 +98,7 @@ static void _flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map
 
 // ── LVGL tick callback ───────────────────────────────────
 static uint32_t _tick_cb() {
-    return (uint32_t)millis();
+    return pda2_platform_now_ms();
 }
 
 // ── Реализация Display_Class ─────────────────────────────
@@ -162,3 +170,5 @@ int Display_Class::height() { return _lcd.height(); }
 lgfx::v1::LGFX_Device& Display_Class::raw() {
     return _lcd;
 }
+
+#endif // !PDA2_SIM

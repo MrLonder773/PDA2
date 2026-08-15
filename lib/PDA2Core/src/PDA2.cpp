@@ -5,20 +5,19 @@
 // ════════════════════════════════════════════════════════
 
 #include "PDA2.h"
-#include <esp_heap_caps.h>
+#include "pda2_platform.h"
+#include "pda2_log.h"
 
 // ── Глобальный экземпляр ─────────────────────────────────
 pda2::PDA2Class PDA;
 
 // ── begin ─────────────────────────────────────────────────
 void pda2::PDA2Class::begin(config_t cfg) {
-    Serial.begin(115200);
-    delay(200);
+    pda2_platform_begin();
     PDA_LOGI("core", "PDA 2 starting... " PDA2_VERSION);
 
     // I2C
-    Wire.begin(PDA2_PIN_SDA, PDA2_PIN_SCL);
-    Wire.setClock(100000);
+    pda2_platform_i2c_begin(PDA2_PIN_SDA, PDA2_PIN_SCL);
     PDA_LOGI("core", "I2C ok (SDA=%d SCL=%d 100kHz)", PDA2_PIN_SDA, PDA2_PIN_SCL);
     
     // Prefs
@@ -36,7 +35,7 @@ void pda2::PDA2Class::begin(config_t cfg) {
 
     if (!Display.begin(cfg.brightness, cfg.rotation)) {
         PDA_LOGE("core", "Display init failed — halting");
-        while(true) delay(1000);
+        while(true) pda2_platform_sleep_ms(1000);
     }
 
     Rtc.begin();
@@ -64,7 +63,7 @@ void pda2::PDA2Class::begin(config_t cfg) {
         PDA_LOGI("core", "Bt restore pending");
     }
 
-    _last_tick_ms = millis();
+    _last_tick_ms = pda2_platform_now_ms();
 
     PDA_LOGI("core", "Heap: %u  PSRAM: %u", freeHeap(), freePsram());
     PDA_LOGI("core", "PDA.begin() done");
@@ -88,7 +87,7 @@ void pda2::PDA2Class::update() {
         }
     }
 
-    uint32_t now      = millis();
+    uint32_t now      = pda2_platform_now_ms();
     uint32_t delta_ms = now - _last_tick_ms;
     _last_tick_ms     = now;
 
@@ -104,9 +103,9 @@ void pda2::PDA2Class::toast(const char* text, uint32_t ms) {
 
 // ── утилиты ───────────────────────────────────────────────
 uint32_t pda2::PDA2Class::freeHeap() {
-    return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    return pda2_platform_free_heap();
 }
 
 uint32_t pda2::PDA2Class::freePsram() {
-    return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    return pda2_platform_free_psram();
 }

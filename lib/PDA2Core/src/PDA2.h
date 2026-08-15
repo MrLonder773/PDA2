@@ -27,8 +27,6 @@
 #include "utility/Rtc_Class.h"
 #include "utility/Imu_Class.h"
 
-#include <Arduino.h>
-#include <Wire.h>
 #include <lvgl.h>
 
 namespace pda2 {

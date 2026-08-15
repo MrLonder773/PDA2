@@ -92,6 +92,10 @@ private:
     UsbEvent         _buf[USB_EVENT_BUF_SIZE];
 
     void _push(const UsbEvent& e);
+
+    // ── Platform-хук — опрос устройств на PC, пусто на ESP32 ──
+    // (события там приходят асинхронно через колбэки USB-стека)
+    static void _platformPoll(Usb_Class* self);
 };
 
 } // namespace pda2
