@@ -37,7 +37,7 @@ void Display_Class::setBrightness(uint8_t v) {
 
 Все функции Display_Class можно изучит по пути lib/PDA2Core/src/utility/Display_Class_esp32.cpp.
 
-Также для изучения структуры можно изучить Bluetooth класс. Например можно вручную включать и выключать Bluetooth с помощью функций к классе. Реализация прилагается:
+Также для изучения структуры можно изучить Bluetooth класс. Например можно вручную включать и выключать Bluetooth с помощью функций в классе. Реализация прилагается:
 ```
 void Bt_Class::enable() {
     if (_state != BT_OFF) return;
