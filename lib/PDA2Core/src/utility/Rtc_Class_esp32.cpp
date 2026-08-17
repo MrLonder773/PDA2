@@ -1,11 +1,16 @@
 // ════════════════════════════════════════════════════════
-//  PDA 2 — Rtc_Class.cpp
+//  PDA 2 — Rtc_Class_esp32.cpp
 //  DS3231 raw I2C. Регистры: 0x00–0x06.
+//  Компилируется, только если PDA2_SIM НЕ определён —
+//  в сборке симулятора тело пустое (см. Rtc_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 
 #include "Rtc_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
+
+#ifndef PDA2_SIM
+
 #include <Wire.h>
 
 static inline uint8_t bcd2dec(uint8_t b) { return (b >> 4) * 10 + (b & 0x0F); }
@@ -80,3 +85,5 @@ void Rtc_Class::set(const pda2_time_t& t) {
     PDA_LOGI("rtc", "Time set: %04d-%02d-%02d %02d:%02d:%02d",
              t.year, t.month, t.day, t.hour, t.minute, t.second);
 }
+
+#endif // !PDA2_SIM

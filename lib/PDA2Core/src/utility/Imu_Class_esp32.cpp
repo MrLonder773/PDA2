@@ -1,13 +1,18 @@
 // ════════════════════════════════════════════════════════
-//  PDA 2 — Imu_Class.cpp
+//  PDA 2 — Imu_Class_esp32.cpp
 //  BMI160: chip_id=0xD1, accel 0x12, gyro 0x0C.
 //  На PDA2_LITE — BMI160 не разведён (см. pda2_config.h),
-//  ниже заглушка, всегда _ok=false.
+//  begin() не найдёт chip_id, _ok останется false.
+//  Компилируется, только если PDA2_SIM НЕ определён —
+//  в сборке симулятора тело пустое (см. Imu_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 
 #include "Imu_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
+
+#ifndef PDA2_SIM
+
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -102,3 +107,5 @@ pda2_imu_t Imu_Class::get() {
 
     return d;
 }
+
+#endif // !PDA2_SIM
