@@ -71,3 +71,36 @@ void GLTestApp::onOpen(): эта функция уже просто подгру
 void GLTestApp::onTick(uint32_t delta_ms): как следует из названия сюда мы пишем код который будет выполнятся каждый тик(итерацию процессора), сюда вы пишете все что нужно выполнять в цикле. Можете его так и воспринимать как цикл.
 
 void GLTestApp::onClose(): также как следует из названия тут мы пишем код который будет выполнятся при закрытие приложения. Если вам не нужно ничего выгрузить, закрыть, и тп то просто оставляете функцию пустой.
+
+# Шаблон приложения
+
+ apps/myapp/MyApp.h:
+  ───────────────────
+  #pragma once
+  #include <PDA2.h>
+
+  class MyApp : public PDA2App {
+  public:
+      MyApp() { name = "MyApp"; }
+      void onInit()  override;
+      void onOpen()  override;
+      void onClose() override;
+      void onTick(uint32_t delta_ms) override;
+  private:
+      lv_obj_t* _lbl_title = nullptr;
+  };
+
+  apps/myapp/MyApp.cpp:
+  ─────────────────────
+  #include "MyApp.h"
+
+  void MyApp::onInit() {
+      screen = lv_obj_create(NULL);          // NULL — обязательно
+      _lbl_title = lv_label_create(screen);
+      lv_obj_set_style_bg_opa(_lbl_title, LV_OPA_COVER, 0);   // обязательно!
+      lv_label_set_text(_lbl_title, "Hello");
+  }
+
+  void MyApp::onTick(uint32_t dt) {
+      pda2_time_t t = PDA.Rtc.get();
+  }
