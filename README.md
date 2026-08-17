@@ -115,3 +115,9 @@ PDA2 рядом с PDA2 Lite(репозиторий Lite еще закрыт(П�
 <img width="1280" height="960" alt="IMG_20260817_150415_905" src="https://github.com/user-attachments/assets/3f497200-eafa-4d49-a35e-ae90f54f7c2c" />
 Работа Launcher на PDA2
 <img width="1280" height="960" alt="IMG_20260817_150504_157" src="https://github.com/user-attachments/assets/4670b1bc-58fd-42ef-9302-ce1dcf2d8bf7" />
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 — see the [LICENSE](LICENSE) file for details.
+
+Copyright (C) 2026 MrLonder773
