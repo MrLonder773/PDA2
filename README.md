@@ -73,7 +73,7 @@ void GLTestApp::onTick(uint32_t delta_ms): как следует из назва
 void GLTestApp::onClose(): также как следует из названия тут мы пишем код который будет выполнятся при закрытие приложения. Если вам не нужно ничего выгрузить, закрыть, и тп то просто оставляете функцию пустой.
 
 # Шаблон приложения
-
+```
  apps/myapp/MyApp.h:
   ───────────────────
   #pragma once
@@ -104,3 +104,4 @@ void GLTestApp::onClose(): также как следует из названи�
   void MyApp::onTick(uint32_t dt) {
       pda2_time_t t = PDA.Rtc.get();
   }
+```
