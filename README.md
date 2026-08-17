@@ -1,3 +1,7 @@
+# Всем кто читает репозиторий
+Я не автор PDA2, просто мой репозиторий быстро развивается)
+
+Автор оригинального репозитория: MrLonder773
 # Все классы
     Display_Class    Display;
     
@@ -105,3 +109,10 @@ void GLTestApp::onClose(): также как следует из названи�
       pda2_time_t t = PDA.Rtc.get();
   }
 ```
+# Галерея
+PDA2 в ранних этапах разработки:
+<img width="1280" height="960" alt="IMG_20260817_145814_959" src="https://github.com/user-attachments/assets/6537cca2-7a96-47d2-9ca3-63452a79a222" />
+PDA2 рядом с PDA2 Lite(репозиторий Lite еще закрыт(Пропроитарщина!!!))
+<img width="1280" height="960" alt="IMG_20260817_150415_905" src="https://github.com/user-attachments/assets/3f497200-eafa-4d49-a35e-ae90f54f7c2c" />
+Работа Launcher на PDA2
+<img width="1280" height="960" alt="IMG_20260817_150504_157" src="https://github.com/user-attachments/assets/4670b1bc-58fd-42ef-9302-ce1dcf2d8bf7" />
