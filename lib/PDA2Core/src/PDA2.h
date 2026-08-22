@@ -40,7 +40,8 @@
 #include "utility/QuickPanel_Class.h"
 #include "utility/Font_Class.h"
 #include "utility/Usb_Class.h"
-#include "utility/Bt_Class.h"       // ← добавлено
+#include "utility/Bt_Class.h"
+#include "utility/Wifi_Class.h"
 #include "utility/Touch_Class.h"
 #include "utility/Rtc_Class.h"
 #include "utility/Imu_Class.h"
@@ -64,7 +65,8 @@ public:
     QuickPanel_Class QuickPanel;
     Font_Class       Fonts;
     Usb_Class        Usb;
-    Bt_Class         Bt;            // ← добавлено
+    Bt_Class         Bt;
+    Wifi_Class       Wifi;
     Touch_Class      Touch;
     Rtc_Class        Rtc;
     Imu_Class        Imu;
@@ -80,7 +82,7 @@ public:
 
 private:
     uint32_t _last_tick_ms       = 0;
-    bool     _bt_restore_pending = false;  // ← добавлено
+    bool     _bt_restore_pending = false;
 };
 
 } // namespace pda2

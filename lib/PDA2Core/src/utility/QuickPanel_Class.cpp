@@ -1,6 +1,5 @@
 #include "QuickPanel_Class.h"
 #include <PDA2.h>
-#include <WiFi.h>
 
 // ═══════════════════════════════════════════════════════════
 //  Константы панели
@@ -343,11 +342,7 @@ void QuickPanel_Class::_cb_wifi(lv_event_t* e) {
     lv_obj_t* sw = (lv_obj_t*)lv_event_get_target(e);
     bool enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
     PDA.Prefs.setWifi(enabled);
-    if (enabled) {
-        WiFi.mode(WIFI_STA);
-    } else {
-        WiFi.mode(WIFI_OFF);
-    }
+    PDA.Wifi.setEnabled(enabled);
     PDA_LOGI("qpanel", "WiFi %s", enabled ? "on" : "off");
 }
 
