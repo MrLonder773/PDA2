@@ -1,15 +1,22 @@
 // ════════════════════════════════════════════════════════
-//  PDA 2 LITE — Bt_Class.cpp
+//  PDA 2 — Bt_Class_esp32.cpp
 //  Стек: NimBLE-Arduino (h2zero @ ^2.0.0).   // ← было ^1.4.0
 //  Архитектура: NimBLE GATT клиент.
 //    Scan: NimBLEDevice::getScan() → onResult → queue
 //    Connect: отдельный FreeRTOS task → getService(0x1812)
 //             → registerForNotify(0x2A4D) → queue
 //    Keys: _notify_cb → _onReport() → queue → update()
+//  Компилируется, только если PDA2_SIM НЕ определён —
+//  в сборке симулятора тело пустое (см. Bt_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 #include "Bt_Class.h"
 #include "../pda2_log.h"
 
+#ifndef PDA2_SIM
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
 #include <NimBLEDevice.h>
 
 #define TAG "bt"
@@ -55,14 +62,14 @@ class BtScanCallbacks : public NimBLEScanCallbacks {
         strlcpy(ev.addr, adv->getAddress().toString().c_str(), sizeof(ev.addr));
         const char* n = adv->getName().c_str();
         strlcpy(ev.name, n[0] ? n : "HID Device", sizeof(ev.name));
-        xQueueSend(self->_queue, &ev, 0);
+        xQueueSend((QueueHandle_t)self->_queue, &ev, 0);
     }
 
     void onScanEnd(const NimBLEScanResults& results, int reason) override {
         Bt_Class* self = Bt_Class::_instance;
         if (!self || !self->_queue) return;
         BtEvt ev = {}; ev.type = EVT_SCAN_DONE;
-        xQueueSend(self->_queue, &ev, 0);
+        xQueueSend((QueueHandle_t)self->_queue, &ev, 0);
     }
 };
 static BtScanCallbacks s_scan_cbs;
@@ -74,7 +81,7 @@ class BtClientCallbacks : public NimBLEClientCallbacks {
         Bt_Class* self = Bt_Class::_instance;
         if (!self || !self->_queue) return;
         BtEvt ev = {}; ev.type = EVT_DISCONNECT;
-        xQueueSend(self->_queue, &ev, 0);
+        xQueueSend((QueueHandle_t)self->_queue, &ev, 0);
     }
 };
 static BtClientCallbacks s_client_cbs;
@@ -193,7 +200,7 @@ const char* Bt_Class::connectedName() const {
 // ── update (main task) ───────────────────────────────────
 void Bt_Class::update() {
     BtEvt ev;
-    while (xQueueReceive(_queue, &ev, 0) == pdTRUE) {
+    while (xQueueReceive((QueueHandle_t)_queue, &ev, 0) == pdTRUE) {
         switch (ev.type) {
 
             case EVT_KEY:
@@ -302,7 +309,7 @@ void Bt_Class::_onReport(const uint8_t* data, size_t len) {
             if (data[j] == _last_report[i]) { still = true; break; }
         if (!still) {
             ev.keycode = _last_report[i]; ev.pressed = false;
-            xQueueSend(_queue, &ev, 0);
+            xQueueSend((QueueHandle_t)_queue, &ev, 0);
         }
     }
 
@@ -314,7 +321,7 @@ void Bt_Class::_onReport(const uint8_t* data, size_t len) {
             if (_last_report[j] == data[i]) { was = true; break; }
         if (!was) {
             ev.keycode = data[i]; ev.pressed = true;
-            xQueueSend(_queue, &ev, 0);
+            xQueueSend((QueueHandle_t)_queue, &ev, 0);
         }
     }
 
@@ -343,7 +350,7 @@ void Bt_Class::_connect_task(void* param) {
         NimBLEDevice::deleteClient(client);
         self->_connecting = false;
         BtEvt ev = {}; ev.type = EVT_DISCONNECT;
-        xQueueSend(self->_queue, &ev, 0);
+        xQueueSend((QueueHandle_t)self->_queue, &ev, 0);
         delete p; vTaskDelete(nullptr); return;
     }
 
@@ -373,7 +380,9 @@ void Bt_Class::_connect_task(void* param) {
     BtEvt ev = {}; ev.type = EVT_CONNECT; ev.addr_type = p->addr_type;
     strlcpy(ev.addr, p->addr, sizeof(ev.addr));
     strlcpy(ev.name, p->name[0] ? p->name : "BLE HID", sizeof(ev.name));
-    xQueueSend(self->_queue, &ev, 0);
+    xQueueSend((QueueHandle_t)self->_queue, &ev, 0);
 
     delete p; vTaskDelete(nullptr);
 }
+
+#endif // !PDA2_SIM

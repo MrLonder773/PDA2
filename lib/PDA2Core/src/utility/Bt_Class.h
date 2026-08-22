@@ -8,8 +8,11 @@
 
 #include <stdint.h>
 #include <string.h>
+
+#ifndef PDA2_SIM
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#endif
 
 #define BT_MAX_DEVICES 8
 
@@ -57,7 +60,7 @@ public:
 
     // ── Доступно из file-local callback'ов в .cpp ─────────
     void          _onReport(const uint8_t* data, size_t len);
-    QueueHandle_t _queue      = nullptr;
+    void*         _queue      = nullptr;   // QueueHandle_t на esp32 (== void*), не используется на sim
     bool          _connecting = false;
     void*         _client     = nullptr;  // NimBLEClient*, удаляется в update()
 
