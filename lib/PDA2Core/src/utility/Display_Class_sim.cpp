@@ -7,11 +7,12 @@
 //  в буфер на ESP32-стороне (see _lcd.setColorDepth(16) в
 //  Display_Class_esp32.cpp) — конвертация не нужна.
 //
-//  raw() здесь НЕ реализован — на PC нет LovyanGFX и не будет.
-//  Единственный вызывающий — GLTestApp, который исключён из
-//  списка файлов сборки симулятора на уровне CMake (он не
-//  компилируется в PC-таргет вообще, поэтому неопределённого
-//  символа при линковке не возникает).
+//  raw() — PdaRawDisplay_Sim::pushImage() пишет прямо в SDL2-
+//  текстуру (SDL_UpdateTexture на конкретный SDL_Rect) и сразу
+//  показывает кадр — мимо LVGL-буфера (_buf1), тем же способом,
+//  каким LGFX_Device::pushImage() на железе пишет прямо в LCD
+//  через SPI мимо LVGL. GLTestApp/render.cpp достаёт raw() через
+//  auto&, поэтому компилируется на обеих платформах без правок.
 //
 //  Компилируется, только если PDA2_SIM определён —
 //  в прошивке ESP32 тело пустое (см. Display_Class_esp32.cpp).
@@ -147,5 +148,20 @@ uint8_t Display_Class::getRotation() { return _rotation; }
 
 int Display_Class::width()  { return _logical_w(_rotation); }
 int Display_Class::height() { return _logical_h(_rotation); }
+
+// ── raw() / PdaRawDisplay_Sim ────────────────────────────
+static PdaRawDisplay_Sim _raw_display;
+
+void PdaRawDisplay_Sim::pushImage(int32_t x, int32_t y, int32_t w, int32_t h, const uint16_t* data) {
+    SDL_Rect r{ (int)x, (int)y, (int)w, (int)h };
+    SDL_UpdateTexture(_texture, &r, data, w * 2 /*RGB565*/);
+    SDL_RenderClear(_renderer);
+    SDL_RenderCopy(_renderer, _texture, nullptr, nullptr);
+    SDL_RenderPresent(_renderer);
+}
+
+PdaRawDisplay_Sim& Display_Class::raw() {
+    return _raw_display;
+}
 
 #endif // PDA2_SIM

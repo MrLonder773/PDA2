@@ -1,5 +1,7 @@
 #include "render.h"
+#ifndef PDA2_SIM
 #include <LovyanGFX.hpp>   // нужен полный тип LGFX_Device для pushImage()
+#endif
 
 void load::init() {
     PDA_LOGI("core", "Ok TGX loaded");
@@ -15,7 +17,7 @@ void render::changeColor(float r, float g, float b){
 void render::vertic(tgx::Image<tgx::RGB565>& im, int screen_x, int screen_y, int w, int h /*int x, int y*/) {
     im.clear(tgx::RGB565_Black);
     im.fillTriangle({75, 2}, {40, 90}, {150, 10} , tgx::RGB565_Purple, tgx::RGB565_Magenta);
-    lgfx::v1::LGFX_Device& lcd = PDA.Display.raw();
+    auto& lcd = PDA.Display.raw();
     lcd.pushImage(screen_x, screen_y, w, h, (uint16_t*)im.data());
 }
 

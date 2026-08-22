@@ -12,8 +12,9 @@
 //
 //  Компилируется, только если PDA2_SIM НЕ определён —
 //  в сборке симулятора тело пустое (см. Display_Class_sim.cpp).
-//  raw() — только здесь, PC-эквивалента нет и не будет
-//  (см. пояснение в Display_Class_sim.cpp).
+//  raw() здесь возвращает настоящий LGFX_Device — на симуляторе
+//  та же сигнатура вызова (auto&, pushImage) работает через
+//  PdaRawDisplay_Sim (см. Display_Class.h и Display_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 
 #include "Display_Class.h"

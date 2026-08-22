@@ -1,10 +1,18 @@
 // ════════════════════════════════════════════════════════
-//  PDA 2 — Prefs_Class.cpp
+//  PDA 2 — Prefs_Class_esp32.cpp
+//  NVS-обёртка поверх Arduino Preferences (ESP-IDF NVS).
+//
+//  Компилируется, только если PDA2_SIM НЕ определён —
+//  в сборке симулятора своя реализация, файл-бэкенд
+//  (см. Prefs_Class_sim.cpp).
 // ════════════════════════════════════════════════════════
 
 #include "Prefs_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
+
+#ifndef PDA2_SIM
+
 #include <Preferences.h>
 
 static Preferences _prefs;
@@ -62,11 +70,13 @@ void Prefs_Class::setWifi(bool val) {
     _prefs.putBool("wifi", val);
 }
 
-bool   Prefs_Class::getBtEnabled()                { return _prefs.getBool("bt_en", false); }
-void   Prefs_Class::setBtEnabled(bool v)          { _prefs.putBool("bt_en", v); }
-String Prefs_Class::getBtLastDevice()             { return _prefs.getString("bt_last", ""); }
-void   Prefs_Class::setBtLastDevice(const String& m) { _prefs.putString("bt_last", m); }
-uint8_t Prefs_Class::getBtLastDeviceType()        { return _prefs.getUChar("bt_last_t", 1); }
-void   Prefs_Class::setBtLastDeviceType(uint8_t t){ _prefs.putUChar("bt_last_t", t); }
-String Prefs_Class::getBtLastDeviceName()               { return _prefs.getString("bt_last_n", ""); }
-void   Prefs_Class::setBtLastDeviceName(const String& n){ _prefs.putString("bt_last_n", n); }
+bool     Prefs_Class::getBtEnabled()                  { return _prefs.getBool("bt_en", false); }
+void     Prefs_Class::setBtEnabled(bool v)            { _prefs.putBool("bt_en", v); }
+PdaStr32 Prefs_Class::getBtLastDevice()               { return PdaStr32(_prefs.getString("bt_last", "").c_str()); }
+void     Prefs_Class::setBtLastDevice(const PdaStr32& m) { _prefs.putString("bt_last", m.c_str()); }
+uint8_t  Prefs_Class::getBtLastDeviceType()           { return _prefs.getUChar("bt_last_t", 1); }
+void     Prefs_Class::setBtLastDeviceType(uint8_t t)  { _prefs.putUChar("bt_last_t", t); }
+PdaStr32 Prefs_Class::getBtLastDeviceName()               { return PdaStr32(_prefs.getString("bt_last_n", "").c_str()); }
+void     Prefs_Class::setBtLastDeviceName(const PdaStr32& n){ _prefs.putString("bt_last_n", n.c_str()); }
+
+#endif // !PDA2_SIM

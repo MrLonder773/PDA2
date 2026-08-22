@@ -80,7 +80,7 @@ void pda2::PDA2Class::update() {
     if (_bt_restore_pending) {
         _bt_restore_pending = false;
         Bt.enable();
-        String name = Prefs.getBtLastDeviceName();
+        PdaStr32 name = Prefs.getBtLastDeviceName();
         if (name.length() > 0) {
             PDA_LOGI("core", "Bt auto-reconnect → %s", name.c_str());
             Bt.connectByName(name.c_str());

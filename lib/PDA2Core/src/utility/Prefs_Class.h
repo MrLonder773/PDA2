@@ -4,8 +4,8 @@
 //  PDA 2 — Prefs_Class.h
 //  NVS-обёртка. Хранит настройки между перезагрузками.
 // ════════════════════════════════════════════════════════
-#include <Arduino.h>
 #include <stdint.h>
+#include "PdaStr32.h"
 
 class Prefs_Class {
 public:
@@ -38,10 +38,10 @@ public:
      // Bluetooth 
     bool    getBtEnabled();
     void    setBtEnabled(bool val);
-    String  getBtLastDevice();          // "aa:bb:cc:dd:ee:ff" (lowercase)
-    void    setBtLastDevice(const String& mac);
+    PdaStr32 getBtLastDevice();          // "aa:bb:cc:dd:ee:ff" (lowercase)
+    void    setBtLastDevice(const PdaStr32& mac);
     uint8_t getBtLastDeviceType();      // 0=public, 1=random (default 1)
     void    setBtLastDeviceType(uint8_t t);
-    String getBtLastDeviceName();
-    void   setBtLastDeviceName(const String& name);
+    PdaStr32 getBtLastDeviceName();
+    void     setBtLastDeviceName(const PdaStr32& name);
 };
