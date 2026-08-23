@@ -1,7 +1,7 @@
 #include "AccelApp.h"
 #include <math.h>
 #include <string.h>
-#include <esp_heap_caps.h>
+#include "pda2_platform.h"
 
 static const char* TAG = "accel";
 
@@ -86,7 +86,7 @@ void AccelApp::onInit() {
 
     // Canvas (PSRAM) — 280×370, тап переключает режим
     size_t buf_sz = (size_t)CANVAS_W * CANVAS_H * 2;
-    _canvas_buf = heap_caps_malloc(buf_sz, MALLOC_CAP_SPIRAM);
+    _canvas_buf = pda2_platform_psram_malloc(buf_sz);
     if (!_canvas_buf) { PDA_LOGE(TAG, "PSRAM alloc failed"); return; }
     _canvas = lv_canvas_create(screen);
     lv_canvas_set_buffer(_canvas, _canvas_buf, CANVAS_W, CANVAS_H,

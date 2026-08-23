@@ -16,6 +16,7 @@
 
 #include <SDL2/SDL.h>
 #include <cstdio>
+#include <cstdlib>
 #include <thread>
 #include <chrono>
 
@@ -44,6 +45,10 @@ uint32_t pda2_platform_free_heap() {
 
 uint32_t pda2_platform_free_psram() {
     return 0xFFFFFFFF;
+}
+
+void* pda2_platform_psram_malloc(size_t size) {
+    return malloc(size);
 }
 
 // ── Touch: мышь через SDL2 ───────────────────────────────

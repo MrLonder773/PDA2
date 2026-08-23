@@ -39,6 +39,10 @@ uint32_t pda2_platform_free_psram() {
     return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
 }
 
+void* pda2_platform_psram_malloc(size_t size) {
+    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+}
+
 // ── Touch: FT6236, raw I2C ───────────────────────────────
 #include "pda2_config.h"
 

@@ -2,7 +2,6 @@
 #include "render.h"
 //#include "logic.h"
 #include <tgx.h>
-#include <LovyanGFX.hpp>
 
 void GLTestApp::onInit() {
     //Гружу классы

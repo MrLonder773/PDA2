@@ -14,6 +14,7 @@
 // ════════════════════════════════════════════════════════
 
 #include <stdint.h>
+#include <stddef.h>
 
 // Serial + любая другая одноразовая платформенная инициализация при старте.
 void pda2_platform_begin();
@@ -32,6 +33,11 @@ void pda2_platform_sleep_ms(uint32_t ms);
 // Свободная память. На PC не критично — можно вернуть заглушку.
 uint32_t pda2_platform_free_heap();
 uint32_t pda2_platform_free_psram();
+
+// Выделение буфера "как бы в PSRAM". ESP32 — реальная PSRAM
+// (heap_caps_malloc + MALLOC_CAP_SPIRAM). PC — обычный malloc,
+// PSRAM как отдельная концепция на PC не существует.
+void* pda2_platform_psram_malloc(size_t size);
 
 // Touch — начать/проверить наличие устройства.
 // ESP32: сброс FT6236 через GPIO + проверка по I2C.
