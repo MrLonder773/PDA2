@@ -5,8 +5,14 @@
 //  LittleFS (internal) + SD. Единая точка доступа к ФС.
 // ════════════════════════════════════════════════════════
 
-#include <Arduino.h>
 #include <vector>
+
+#ifdef PDA2_SIM
+    #include <string>
+    using String = std::string;
+#else
+    #include <Arduino.h>
+#endif
 
 struct FsEntry {
     String name;
