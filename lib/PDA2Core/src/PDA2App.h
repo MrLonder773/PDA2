@@ -4,6 +4,10 @@
 //  PDA 2 — PDA2App.h
 //  Базовый класс всех приложений.
 //  Каждое приложение = отдельная папка в apps/ + наследник.
+//
+//  Экраны ленивые: screen создаётся в onOpen() при первом
+//  открытии, удаляется автоматически (LVGL, auto_del) при
+//  возврате в launcher. onInit() LVGL не трогает.
 // ════════════════════════════════════════════════════════
 
 #include <lvgl.h>
@@ -11,28 +15,33 @@
 class PDA2App {
 public:
     const char*  name   = "App";
-    lv_obj_t*    screen = nullptr;   // создаётся в onInit() через lv_obj_create(NULL)
+    lv_obj_t*    screen = nullptr;   // nullptr пока не открыт хотя бы раз
 
     virtual ~PDA2App() = default;
 
-    // Вызывается один раз при PDA.Apps.start()
-    // Строим UI: screen = lv_obj_create(NULL); ...
+    // Вызывается один раз при PDA.Apps.start().
+    // ⚠️ НЕ создавать LVGL-объекты здесь. Только init состояния/полей.
     virtual void onInit() {}
 
-    // Вызывается каждый раз при открытии приложения
+    // Вызывается при каждом открытии приложения.
+    // Если screen == nullptr — построить (screen = lv_obj_create(NULL); ...).
+    // Если screen уже есть — просто обновить/восстановить состояние.
     virtual void onOpen() {}
 
-    // Вызывается при закрытии (возврат в launcher)
+    // Вызывается при каждом закрытии (возврат в launcher).
+    // ⚠️ НЕ трогать screen/LVGL — Apps_Class удалит экран сам после анимации,
+    // указатель screen будет автоматически обнулён. Здесь — только сброс
+    // внутреннего состояния приложения (таймеры, подписки и т.п.).
     virtual void onClose() {}
 
-    // Вызывается каждый фрейм пока приложение активно
-    // delta_ms — время с предыдущего вызова в мс
+    // Вызывается каждый фрейм пока приложение активно.
+    // delta_ms — время с предыдущего вызова в мс.
     virtual void onTick(uint32_t delta_ms) {}
 
-    // Вызывается каждый фрейм пока приложение свёрнуто
+    // Вызывается каждый фрейм пока приложение свёрнуто.
     virtual void onBackground() {}
 
-    virtual void onKey(uint8_t keycode, uint8_t modifier) {}  // ← добавлено
+    virtual void onKey(uint8_t keycode, uint8_t modifier) {}
 };
 
 // ════════════════════════════════════════════════════════
@@ -46,7 +55,6 @@ public:
 //  class MyApp : public PDA2App {
 //  public:
 //      MyApp() { name = "MyApp"; }
-//      void onInit()  override;
 //      void onOpen()  override;
 //      void onClose() override;
 //      void onTick(uint32_t delta_ms) override;
@@ -58,11 +66,17 @@ public:
 //  ─────────────────────
 //  #include "MyApp.h"
 //
-//  void MyApp::onInit() {
+//  void MyApp::onOpen() {
+//      if (screen) return;                    // уже построен — просто обновить состояние
+//
 //      screen = lv_obj_create(NULL);          // NULL — обязательно
 //      _lbl_title = lv_label_create(screen);
 //      lv_obj_set_style_bg_opa(_lbl_title, LV_OPA_COVER, 0);   // обязательно!
 //      lv_label_set_text(_lbl_title, "Hello");
+//  }
+//
+//  void MyApp::onClose() {
+//      // screen НЕ трогать — удалится сам. Сбросить только своё состояние.
 //  }
 //
 //  void MyApp::onTick(uint32_t dt) {

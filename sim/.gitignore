@@ -1,0 +1,27 @@
+# ════════════════════════════════════════════════════════
+#  PDA 2 — sim/.gitignore
+#  lvgl/, tgx/, MadgwickAHRS/ коммитятся как есть (осознанно) —
+#  не игнорировать.
+# ════════════════════════════════════════════════════════
+
+# CMake build-директория
+/build/
+
+# Бинарники (EXECUTABLE_OUTPUT_PATH в CMakeLists.txt)
+/bin/
+
+# Runtime-данные sim-ФС (Fs_Class_sim.cpp — не код, не коммитить)
+/fs_data/
+
+# IDE / редакторы
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.vs/
+*.user
+
+# ОС-мусор
+Thumbs.db
+.DS_Store

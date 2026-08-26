@@ -5,6 +5,8 @@
 
 static const char* TAG = "accel";
 
+static constexpr float PDA2_DEG_TO_RAD = 0.017453292519943295f;
+
 static constexpr int16_t CANVAS_W = PDA2_ACCEL_CANVAS_W;
 static constexpr int16_t CANVAS_H = PDA2_ACCEL_CANVAS_H;
 static constexpr int16_t STRIP_H  = PDA2_ACCEL_STRIP_H;
@@ -75,195 +77,197 @@ static void draw_axis_label(lv_layer_t* lay,
     lv_draw_label(lay, &d, &a);
 }
 
-// ── onInit ───────────────────────────────────────────────────────────────
-
-void AccelApp::onInit() {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-    lv_obj_set_style_bg_opa  (screen, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all (screen, 0, 0);
-    lv_obj_set_style_border_width(screen, 0, 0);
-
-    // Canvas (PSRAM) — 280×370, тап переключает режим
-    size_t buf_sz = (size_t)CANVAS_W * CANVAS_H * 2;
-    _canvas_buf = pda2_platform_psram_malloc(buf_sz);
-    if (!_canvas_buf) { PDA_LOGE(TAG, "PSRAM alloc failed"); return; }
-    _canvas = lv_canvas_create(screen);
-    lv_canvas_set_buffer(_canvas, _canvas_buf, CANVAS_W, CANVAS_H,
-                         LV_COLOR_FORMAT_RGB565);
-    lv_obj_set_pos(_canvas, PDA2_ACCEL_CANVAS_X, PDA2_ACCEL_CANVAS_Y);
-    lv_canvas_fill_bg(_canvas, lv_color_hex(PDA2_ACCEL_BG_COLOR), LV_OPA_COVER);
-    lv_obj_add_flag(_canvas, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(_canvas, [](lv_event_t* e) {
-        ((AccelApp*)lv_event_get_user_data(e))->_toggle_cal();
-    }, LV_EVENT_CLICKED, this);
-
-    // NO IMU
-    _lbl_no_imu = lv_label_create(screen);
-    lv_label_set_text(_lbl_no_imu, "NO IMU");
-    lv_obj_set_style_text_font (_lbl_no_imu, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(_lbl_no_imu, lv_color_hex(0xef4444), 0);
-    lv_obj_set_style_bg_opa   (_lbl_no_imu, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color (_lbl_no_imu, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-    lv_obj_align(_lbl_no_imu, LV_ALIGN_CENTER, 0, -(STRIP_H / 2));
-    lv_obj_add_flag(_lbl_no_imu, LV_OBJ_FLAG_HIDDEN);
-
-    // Стрип — 100px снизу
-    lv_obj_t* strip = lv_obj_create(screen);
-    lv_obj_set_size(strip, PDA2_SCREEN_W, STRIP_H);
-    lv_obj_set_pos (strip, 0, PDA2_SCREEN_H - STRIP_H);
-    lv_obj_set_style_bg_color   (strip, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-    lv_obj_set_style_bg_opa     (strip, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(strip, lv_color_hex(0x1f2937), 0);
-    lv_obj_set_style_border_width(strip, 1, 0);
-    lv_obj_set_style_border_side (strip, LV_BORDER_SIDE_TOP, 0);
-    lv_obj_set_style_pad_all    (strip, 0, 0);
-    lv_obj_set_scrollbar_mode   (strip, LV_SCROLLBAR_MODE_OFF);
-
-    // ── Панель данных ────────────────────────────────────────────────────
-    _data_panel = lv_obj_create(strip);
-    lv_obj_set_size(_data_panel, PDA2_SCREEN_W, STRIP_H);
-    lv_obj_set_pos (_data_panel, 0, 0);
-    lv_obj_set_style_bg_opa     (_data_panel, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(_data_panel, 0, 0);
-    lv_obj_set_style_pad_all    (_data_panel, 0, 0);
-    lv_obj_set_scrollbar_mode   (_data_panel, LV_SCROLLBAR_MODE_OFF);
-
-    auto make_pair = [&](const char* name, int16_t x, int16_t y,
-                         lv_color_t col) -> lv_obj_t* {
-        lv_obj_t* nl = lv_label_create(_data_panel);
-        lv_label_set_text(nl, name);
-        lv_obj_set_style_text_font (nl, &lv_font_montserrat_12, 0);
-        lv_obj_set_style_text_color(nl, lv_color_hex(0x4b5563), 0);
-        lv_obj_set_style_bg_opa    (nl, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color  (nl, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-        lv_obj_set_pos(nl, x, y);
-        lv_obj_t* vl = lv_label_create(_data_panel);
-        lv_label_set_text(vl, "+0.00");
-        lv_obj_set_style_text_font (vl, &lv_font_montserrat_12, 0);
-        lv_obj_set_style_text_color(vl, col, 0);
-        lv_obj_set_style_bg_opa    (vl, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color  (vl, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-        lv_obj_set_pos(vl, x + 24, y);
-        return vl;
-    };
-
-    static constexpr int16_t PX  = 14;
-    static constexpr int16_t PX2 = PDA2_SCREEN_W / 2 + 8;
-    static constexpr int16_t RH  = 30;
-    static constexpr int16_t PY  = 8;
-    lv_color_t cx = lv_color_hex(0x60a5fa);
-    lv_color_t cy = lv_color_hex(0x34d399);
-    lv_color_t cz = lv_color_hex(0xfbbf24);
-    _lbl_ax = make_pair("AX", PX,  PY,          cx);
-    _lbl_gx = make_pair("GX", PX2, PY,          cx);
-    _lbl_ay = make_pair("AY", PX,  PY + RH,     cy);
-    _lbl_gy = make_pair("GY", PX2, PY + RH,     cy);
-    _lbl_az = make_pair("AZ", PX,  PY + RH * 2, cz);
-    _lbl_gz = make_pair("GZ", PX2, PY + RH * 2, cz);
-
-    // ── Панель калибровки ─────────────────────────────────────────────────
-    // Тап по canvas → показать; тап снова → скрыть.
-    // Для каждой визуальной оси (X/Y/Z): выбрать физический источник GX/GY/GZ
-    // и знак +1/-1. Активная кнопка подсвечена цветом оси.
-    _cal_panel = lv_obj_create(strip);
-    lv_obj_set_size(_cal_panel, PDA2_SCREEN_W, STRIP_H);
-    lv_obj_set_pos (_cal_panel, 0, 0);
-    lv_obj_set_style_bg_color   (_cal_panel, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-    lv_obj_set_style_bg_opa     (_cal_panel, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(_cal_panel, 0, 0);
-    lv_obj_set_style_pad_all    (_cal_panel, 0, 0);
-    lv_obj_set_scrollbar_mode   (_cal_panel, LV_SCROLLBAR_MODE_OFF);
-
-    static constexpr int16_t BTN_W  = 48;
-    static constexpr int16_t BTN_H  = 22;
-    static constexpr int16_t BTN_G  = 4;
-    static constexpr int16_t SRC_X  = 38;
-    static constexpr int16_t SIGN_X = 210;
-    static constexpr int16_t SIGN_W = 50;
-
-    const char* ax_names[]  = {"X", "Y", "Z"};
-    const char* src_names[] = {"GX", "GY", "GZ"};
-
-    for (int ax = 0; ax < 3; ax++) {
-        int16_t row_cy = PY + ax * RH + RH / 2;
-
-        // Подпись оси
-        lv_obj_t* al = lv_label_create(_cal_panel);
-        lv_label_set_text(al, ax_names[ax]);
-        lv_obj_set_style_text_font (al, &lv_font_montserrat_12, 0);
-        lv_obj_set_style_text_color(al, lv_color_hex(0x9ca3af), 0);
-        lv_obj_set_style_bg_opa   (al, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color (al, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
-        lv_obj_set_pos(al, 14, row_cy - 8);
-
-        // Кнопки источника GX / GY / GZ
-        for (int src = 0; src < 3; src++) {
-            _src_ctx[ax][src] = {this, ax, src};
-
-            lv_obj_t* btn = lv_obj_create(_cal_panel);
-            lv_obj_set_size(btn, BTN_W, BTN_H);
-            lv_obj_set_pos (btn, SRC_X + src * (BTN_W + BTN_G),
-                                 row_cy - BTN_H / 2);
-            lv_obj_set_style_bg_color   (btn, lv_color_hex(0x374151), 0);
-            lv_obj_set_style_bg_opa     (btn, LV_OPA_COVER, 0);
-            lv_obj_set_style_border_width(btn, 0, 0);
-            lv_obj_set_style_pad_all    (btn, 0, 0);
-            lv_obj_set_style_radius     (btn, 4, 0);
-            lv_obj_set_scrollbar_mode   (btn, LV_SCROLLBAR_MODE_OFF);
-            lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_add_event_cb(btn, [](lv_event_t* e) {
-                auto* ctx = (SrcCtx*)lv_event_get_user_data(e);
-                ctx->app->_map[ctx->axis] = ctx->src;
-                ctx->app->_update_cal_ui();
-            }, LV_EVENT_CLICKED, &_src_ctx[ax][src]);
-
-            lv_obj_t* lbl = lv_label_create(btn);
-            lv_label_set_text(lbl, src_names[src]);
-            lv_obj_set_style_text_font (lbl, &lv_font_montserrat_12, 0);
-            lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
-            lv_obj_set_style_bg_opa    (lbl, LV_OPA_TRANSP, 0);
-            lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
-
-            _src_btn[ax][src] = btn;
-        }
-
-        // Кнопка знака (+1 / -1)
-        _sign_ctx[ax] = {this, ax};
-
-        lv_obj_t* sbtn = lv_obj_create(_cal_panel);
-        lv_obj_set_size(sbtn, SIGN_W, BTN_H);
-        lv_obj_set_pos (sbtn, SIGN_X, row_cy - BTN_H / 2);
-        lv_obj_set_style_bg_color   (sbtn, lv_color_hex(0x22c55e), 0);
-        lv_obj_set_style_bg_opa     (sbtn, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(sbtn, 0, 0);
-        lv_obj_set_style_pad_all    (sbtn, 0, 0);
-        lv_obj_set_style_radius     (sbtn, 4, 0);
-        lv_obj_set_scrollbar_mode   (sbtn, LV_SCROLLBAR_MODE_OFF);
-        lv_obj_add_flag(sbtn, LV_OBJ_FLAG_CLICKABLE);
-        lv_obj_add_event_cb(sbtn, [](lv_event_t* e) {
-            auto* ctx = (SignCtx*)lv_event_get_user_data(e);
-            ctx->app->_sign[ctx->axis] *= -1;
-            ctx->app->_update_cal_ui();
-        }, LV_EVENT_CLICKED, &_sign_ctx[ax]);
-
-        lv_obj_t* slbl = lv_label_create(sbtn);
-        lv_label_set_text(slbl, "+1");
-        lv_obj_set_style_text_font (slbl, &lv_font_montserrat_12, 0);
-        lv_obj_set_style_text_color(slbl, lv_color_white(), 0);
-        lv_obj_set_style_bg_opa    (slbl, LV_OPA_TRANSP, 0);
-        lv_obj_align(slbl, LV_ALIGN_CENTER, 0, 0);
-
-        _sign_btn[ax] = sbtn;
-        _sign_lbl[ax] = slbl;
-    }
-
-    lv_obj_add_flag(_cal_panel, LV_OBJ_FLAG_HIDDEN);
-}
-
 // ── onOpen ───────────────────────────────────────────────────────────────
+// Экран ленивый: строится один раз при первом открытии (screen == nullptr),
+// при последующих открытиях guard пропускает построение и сразу идёт сброс
+// состояния ниже. См. PDA2App.h / правило "ленивые экраны".
 
 void AccelApp::onOpen() {
+    if (!screen) {
+        screen = lv_obj_create(NULL);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+        lv_obj_set_style_bg_opa  (screen, LV_OPA_COVER, 0);
+        lv_obj_set_style_pad_all (screen, 0, 0);
+        lv_obj_set_style_border_width(screen, 0, 0);
+
+        // Canvas (PSRAM) — 280×370, тап переключает режим
+        size_t buf_sz = (size_t)CANVAS_W * CANVAS_H * 2;
+        _canvas_buf = pda2_platform_psram_malloc(buf_sz);
+        if (!_canvas_buf) { PDA_LOGE(TAG, "PSRAM alloc failed"); return; }
+        _canvas = lv_canvas_create(screen);
+        lv_canvas_set_buffer(_canvas, _canvas_buf, CANVAS_W, CANVAS_H,
+                             LV_COLOR_FORMAT_RGB565);
+        lv_obj_set_pos(_canvas, PDA2_ACCEL_CANVAS_X, PDA2_ACCEL_CANVAS_Y);
+        lv_canvas_fill_bg(_canvas, lv_color_hex(PDA2_ACCEL_BG_COLOR), LV_OPA_COVER);
+        lv_obj_add_flag(_canvas, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(_canvas, [](lv_event_t* e) {
+            ((AccelApp*)lv_event_get_user_data(e))->_toggle_cal();
+        }, LV_EVENT_CLICKED, this);
+
+        // NO IMU
+        _lbl_no_imu = lv_label_create(screen);
+        lv_label_set_text(_lbl_no_imu, "NO IMU");
+        lv_obj_set_style_text_font (_lbl_no_imu, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(_lbl_no_imu, lv_color_hex(0xef4444), 0);
+        lv_obj_set_style_bg_opa   (_lbl_no_imu, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color (_lbl_no_imu, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+        lv_obj_align(_lbl_no_imu, LV_ALIGN_CENTER, 0, -(STRIP_H / 2));
+        lv_obj_add_flag(_lbl_no_imu, LV_OBJ_FLAG_HIDDEN);
+
+        // Стрип — 100px снизу
+        lv_obj_t* strip = lv_obj_create(screen);
+        lv_obj_set_size(strip, PDA2_SCREEN_W, STRIP_H);
+        lv_obj_set_pos (strip, 0, PDA2_SCREEN_H - STRIP_H);
+        lv_obj_set_style_bg_color   (strip, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+        lv_obj_set_style_bg_opa     (strip, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_color(strip, lv_color_hex(0x1f2937), 0);
+        lv_obj_set_style_border_width(strip, 1, 0);
+        lv_obj_set_style_border_side (strip, LV_BORDER_SIDE_TOP, 0);
+        lv_obj_set_style_pad_all    (strip, 0, 0);
+        lv_obj_set_scrollbar_mode   (strip, LV_SCROLLBAR_MODE_OFF);
+
+        // ── Панель данных ────────────────────────────────────────────────────
+        _data_panel = lv_obj_create(strip);
+        lv_obj_set_size(_data_panel, PDA2_SCREEN_W, STRIP_H);
+        lv_obj_set_pos (_data_panel, 0, 0);
+        lv_obj_set_style_bg_opa     (_data_panel, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(_data_panel, 0, 0);
+        lv_obj_set_style_pad_all    (_data_panel, 0, 0);
+        lv_obj_set_scrollbar_mode   (_data_panel, LV_SCROLLBAR_MODE_OFF);
+
+        auto make_pair = [&](const char* name, int16_t x, int16_t y,
+                             lv_color_t col) -> lv_obj_t* {
+            lv_obj_t* nl = lv_label_create(_data_panel);
+            lv_label_set_text(nl, name);
+            lv_obj_set_style_text_font (nl, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(nl, lv_color_hex(0x4b5563), 0);
+            lv_obj_set_style_bg_opa    (nl, LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_color  (nl, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+            lv_obj_set_pos(nl, x, y);
+            lv_obj_t* vl = lv_label_create(_data_panel);
+            lv_label_set_text(vl, "+0.00");
+            lv_obj_set_style_text_font (vl, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(vl, col, 0);
+            lv_obj_set_style_bg_opa    (vl, LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_color  (vl, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+            lv_obj_set_pos(vl, x + 24, y);
+            return vl;
+        };
+
+        static constexpr int16_t PX  = 14;
+        static constexpr int16_t PX2 = PDA2_SCREEN_W / 2 + 8;
+        static constexpr int16_t RH  = 30;
+        static constexpr int16_t PY  = 8;
+        lv_color_t cx = lv_color_hex(0x60a5fa);
+        lv_color_t cy = lv_color_hex(0x34d399);
+        lv_color_t cz = lv_color_hex(0xfbbf24);
+        _lbl_ax = make_pair("AX", PX,  PY,          cx);
+        _lbl_gx = make_pair("GX", PX2, PY,          cx);
+        _lbl_ay = make_pair("AY", PX,  PY + RH,     cy);
+        _lbl_gy = make_pair("GY", PX2, PY + RH,     cy);
+        _lbl_az = make_pair("AZ", PX,  PY + RH * 2, cz);
+        _lbl_gz = make_pair("GZ", PX2, PY + RH * 2, cz);
+
+        // ── Панель калибровки ─────────────────────────────────────────────────
+        // Тап по canvas → показать; тап снова → скрыть.
+        // Для каждой визуальной оси (X/Y/Z): выбрать физический источник GX/GY/GZ
+        // и знак +1/-1. Активная кнопка подсвечена цветом оси.
+        _cal_panel = lv_obj_create(strip);
+        lv_obj_set_size(_cal_panel, PDA2_SCREEN_W, STRIP_H);
+        lv_obj_set_pos (_cal_panel, 0, 0);
+        lv_obj_set_style_bg_color   (_cal_panel, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+        lv_obj_set_style_bg_opa     (_cal_panel, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(_cal_panel, 0, 0);
+        lv_obj_set_style_pad_all    (_cal_panel, 0, 0);
+        lv_obj_set_scrollbar_mode   (_cal_panel, LV_SCROLLBAR_MODE_OFF);
+
+        static constexpr int16_t BTN_W  = 48;
+        static constexpr int16_t BTN_H  = 22;
+        static constexpr int16_t BTN_G  = 4;
+        static constexpr int16_t SRC_X  = 38;
+        static constexpr int16_t SIGN_X = 210;
+        static constexpr int16_t SIGN_W = 50;
+
+        const char* ax_names[]  = {"X", "Y", "Z"};
+        const char* src_names[] = {"GX", "GY", "GZ"};
+
+        for (int ax = 0; ax < 3; ax++) {
+            int16_t row_cy = PY + ax * RH + RH / 2;
+
+            // Подпись оси
+            lv_obj_t* al = lv_label_create(_cal_panel);
+            lv_label_set_text(al, ax_names[ax]);
+            lv_obj_set_style_text_font (al, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(al, lv_color_hex(0x9ca3af), 0);
+            lv_obj_set_style_bg_opa   (al, LV_OPA_COVER, 0);
+            lv_obj_set_style_bg_color (al, lv_color_hex(PDA2_ACCEL_BG_COLOR), 0);
+            lv_obj_set_pos(al, 14, row_cy - 8);
+
+            // Кнопки источника GX / GY / GZ
+            for (int src = 0; src < 3; src++) {
+                _src_ctx[ax][src] = {this, ax, src};
+
+                lv_obj_t* btn = lv_obj_create(_cal_panel);
+                lv_obj_set_size(btn, BTN_W, BTN_H);
+                lv_obj_set_pos (btn, SRC_X + src * (BTN_W + BTN_G),
+                                     row_cy - BTN_H / 2);
+                lv_obj_set_style_bg_color   (btn, lv_color_hex(0x374151), 0);
+                lv_obj_set_style_bg_opa     (btn, LV_OPA_COVER, 0);
+                lv_obj_set_style_border_width(btn, 0, 0);
+                lv_obj_set_style_pad_all    (btn, 0, 0);
+                lv_obj_set_style_radius     (btn, 4, 0);
+                lv_obj_set_scrollbar_mode   (btn, LV_SCROLLBAR_MODE_OFF);
+                lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+                lv_obj_add_event_cb(btn, [](lv_event_t* e) {
+                    auto* ctx = (SrcCtx*)lv_event_get_user_data(e);
+                    ctx->app->_map[ctx->axis] = ctx->src;
+                    ctx->app->_update_cal_ui();
+                }, LV_EVENT_CLICKED, &_src_ctx[ax][src]);
+
+                lv_obj_t* lbl = lv_label_create(btn);
+                lv_label_set_text(lbl, src_names[src]);
+                lv_obj_set_style_text_font (lbl, &lv_font_montserrat_12, 0);
+                lv_obj_set_style_text_color(lbl, lv_color_white(), 0);
+                lv_obj_set_style_bg_opa    (lbl, LV_OPA_TRANSP, 0);
+                lv_obj_align(lbl, LV_ALIGN_CENTER, 0, 0);
+
+                _src_btn[ax][src] = btn;
+            }
+
+            // Кнопка знака (+1 / -1)
+            _sign_ctx[ax] = {this, ax};
+
+            lv_obj_t* sbtn = lv_obj_create(_cal_panel);
+            lv_obj_set_size(sbtn, SIGN_W, BTN_H);
+            lv_obj_set_pos (sbtn, SIGN_X, row_cy - BTN_H / 2);
+            lv_obj_set_style_bg_color   (sbtn, lv_color_hex(0x22c55e), 0);
+            lv_obj_set_style_bg_opa     (sbtn, LV_OPA_COVER, 0);
+            lv_obj_set_style_border_width(sbtn, 0, 0);
+            lv_obj_set_style_pad_all    (sbtn, 0, 0);
+            lv_obj_set_style_radius     (sbtn, 4, 0);
+            lv_obj_set_scrollbar_mode   (sbtn, LV_SCROLLBAR_MODE_OFF);
+            lv_obj_add_flag(sbtn, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_add_event_cb(sbtn, [](lv_event_t* e) {
+                auto* ctx = (SignCtx*)lv_event_get_user_data(e);
+                ctx->app->_sign[ctx->axis] *= -1;
+                ctx->app->_update_cal_ui();
+            }, LV_EVENT_CLICKED, &_sign_ctx[ax]);
+
+            lv_obj_t* slbl = lv_label_create(sbtn);
+            lv_label_set_text(slbl, "+1");
+            lv_obj_set_style_text_font (slbl, &lv_font_montserrat_12, 0);
+            lv_obj_set_style_text_color(slbl, lv_color_white(), 0);
+            lv_obj_set_style_bg_opa    (slbl, LV_OPA_TRANSP, 0);
+            lv_obj_align(slbl, LV_ALIGN_CENTER, 0, 0);
+
+            _sign_btn[ax] = sbtn;
+            _sign_lbl[ax] = slbl;
+        }
+
+        lv_obj_add_flag(_cal_panel, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // ── Сброс состояния (выполняется при каждом открытии) ──────────────────
     memset(_rot, 0, sizeof(_rot));
     _rot[0][0] = _rot[1][1] = _rot[2][2] = 1.0f;
 
@@ -301,9 +305,9 @@ void AccelApp::onTick(uint32_t delta_ms) {
     _filter.updateIMU(d.gx, d.gy, d.gz, d.ax, d.ay, d.az);
 
     // Euler → матрица вращения (ZYX конвенция)
-    float roll  = _filter.getRoll()  * DEG_TO_RAD;
-    float pitch = _filter.getPitch() * DEG_TO_RAD;
-    float yaw   = _filter.getYaw()   * DEG_TO_RAD;
+    float roll  = _filter.getRoll()  * PDA2_DEG_TO_RAD;
+    float pitch = _filter.getPitch() * PDA2_DEG_TO_RAD;
+    float yaw   = _filter.getYaw()   * PDA2_DEG_TO_RAD;
     float cr = cosf(roll),  sr = sinf(roll);
     float cp = cosf(pitch), sp = sinf(pitch);
     float cy = cosf(yaw),   sy = sinf(yaw);

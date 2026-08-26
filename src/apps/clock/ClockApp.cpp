@@ -6,6 +6,8 @@
 //    - Все лейблы с динамическим текстом: bg_opa=COVER.
 //    - RTC опрашивается раз в секунду через _tick_acc.
 //    - Лейблы обновляются только при изменении значения.
+//    - Экран ленивый: строится один раз при первом onOpen(),
+//      onInit() LVGL не трогает (см. PDA2App.h).
 // ════════════════════════════════════════════════════════
 
 #include "ClockApp.h"
@@ -24,46 +26,46 @@ const char* ClockApp::_weekday_str(uint8_t wd) {
     }
 }
 
-// ── onInit — строим UI один раз ──────────────────────────
-void ClockApp::onInit() {
-    screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a2e), 0);
-    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-    lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
-
-    lv_obj_t* cont = lv_obj_create(screen);
-    lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
-    lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(cont, 0, 0);
-    lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER,
-                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(cont, 16, 0);
-
-    // ── Время HH:MM:SS — единый лейбл ───────────────────
-    _lbl_time = lv_label_create(cont);
-    lv_label_set_text(_lbl_time, "--:--:--");
-    lv_obj_set_style_text_font(_lbl_time, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xffffff), 0);
-    lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a1a2e), 0);
-    lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(_lbl_time, 0, 0);
-
-    // ── Дата ─────────────────────────────────────────────
-    _lbl_date = lv_label_create(cont);
-    lv_label_set_text(_lbl_date, "--- --.--.----");
-    lv_obj_set_style_text_font(_lbl_date, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(_lbl_date, lv_color_hex(0xaaaacc), 0);
-    lv_obj_set_style_bg_color(_lbl_date, lv_color_hex(0x1a1a2e), 0);
-    lv_obj_set_style_bg_opa(_lbl_date, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(_lbl_date, 0, 0);
-}
-
-// ── onOpen ────────────────────────────────────────────────
+// ── onOpen — строим UI один раз, дальше просто сброс состояния ──────────
 void ClockApp::onOpen() {
+    if (!screen) {
+        screen = lv_obj_create(NULL);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+        lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t* cont = lv_obj_create(screen);
+        lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
+        lv_obj_align(cont, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_bg_opa(cont, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(cont, 0, 0);
+        lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
+        lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER,
+                              LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_gap(cont, 16, 0);
+
+        // ── Время HH:MM:SS — единый лейбл ───────────────────
+        _lbl_time = lv_label_create(cont);
+        lv_label_set_text(_lbl_time, "--:--:--");
+        lv_obj_set_style_text_font(_lbl_time, &lv_font_montserrat_48, 0);
+        lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xffffff), 0);
+        lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
+        lv_obj_set_style_pad_all(_lbl_time, 0, 0);
+
+        // ── Дата ─────────────────────────────────────────────
+        _lbl_date = lv_label_create(cont);
+        lv_label_set_text(_lbl_date, "--- --.--.----");
+        lv_obj_set_style_text_font(_lbl_date, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(_lbl_date, lv_color_hex(0xaaaacc), 0);
+        lv_obj_set_style_bg_color(_lbl_date, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_opa(_lbl_date, LV_OPA_COVER, 0);
+        lv_obj_set_style_pad_all(_lbl_date, 0, 0);
+    }
+
+    // ── Сброс состояния (выполняется при каждом открытии) ──────────────
     _prev_hh    = 0xFF;
     _prev_mm    = 0xFF;
     _prev_ss    = 0xFF;

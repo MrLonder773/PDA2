@@ -6,29 +6,17 @@
 #include "Apps_Class.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
-#include <Arduino.h>
+#include "../pda2_platform.h"
 
 extern const lv_font_t pda2_cyrillic_16;
 static Apps_Class* _apps_instance = nullptr;
 
 // ── Цвета иконок (по кругу) ──────────────────────────────
 static const uint32_t _icon_colors[] = {
-    0x2563eb,  // синий
-    0x16a34a,  // зелёный
-    0x9333ea,  // фиолетовый
-    0x6b7280,  // серый
-    0x0891b2,  // голубой
-    0xf97316,  // оранжевый
-    0x0ea5e9,  // небесный
-    0xef4444,  // красный
-    0x8b5cf6,  // лавандовый
-    0x14b8a6,  // бирюзовый
-    0xdc2626,  // тёмно-красный
-    0x22c55e,  // ярко-зелёный
-    0xe879f9,  // розовый
-    0xfbbf24,  // жёлтый
-    0x34d399,  // мятный
-    0xf472b6,  // светло-розовый
+    0x2563eb, 0x16a34a, 0x9333ea, 0x6b7280,
+    0x0891b2, 0xf97316, 0x0ea5e9, 0xef4444,
+    0x8b5cf6, 0x14b8a6, 0xdc2626, 0x22c55e,
+    0xe879f9, 0xfbbf24, 0x34d399, 0xf472b6,
 };
 static const uint8_t _n_colors = sizeof(_icon_colors) / sizeof(_icon_colors[0]);
 
@@ -47,7 +35,7 @@ void Apps_Class::start() {
 
     for (uint8_t i = 0; i < _count; i++) {
         if (_apps[i]) {
-            _apps[i]->onInit();
+            _apps[i]->onInit();   // ⚠️ только init состояния, БЕЗ LVGL
             PDA_LOGI("apps", "onInit: %s", _apps[i]->name);
         }
     }
@@ -60,10 +48,26 @@ void Apps_Class::start() {
 
 // ── open / close ─────────────────────────────────────────
 void Apps_Class::open(uint8_t id) {
-    if (id >= _count || !_apps[id] || !_apps[id]->screen) {
+    if (id >= _count || !_apps[id]) {
         PDA_LOGE("apps", "open(%d): invalid id", id);
         return;
     }
+
+    lv_obj_t* prev_screen = _apps[id]->screen;
+
+    _apps[id]->onOpen();   // строит screen лениво, если его ещё нет
+
+    if (!_apps[id]->screen) {
+        PDA_LOGE("apps", "open(%d): onOpen() did not build screen", id);
+        return;
+    }
+
+    // Колбэк на удаление вешаем один раз — когда screen реально создан впервые.
+    if (_apps[id]->screen != prev_screen) {
+        lv_obj_add_event_cb(_apps[id]->screen, _screen_del_cb,
+                             LV_EVENT_DELETE, (void*)_apps[id]);
+    }
+
     _current_id = id;
     _is_open    = true;
 
@@ -73,14 +77,13 @@ void Apps_Class::open(uint8_t id) {
         PDA2_ANIM_MS, 0, false
     );
 
-    _apps[id]->onOpen();
     PDA_LOGI("apps", "Opened: %s", _apps[id]->name);
 }
 
 void Apps_Class::close() {
     if (!_is_open || _current_id < 0) return;
 
-    _apps[_current_id]->onClose();
+    _apps[_current_id]->onClose();   // ⚠️ только состояние, screen не трогать
     PDA_LOGI("apps", "Closed: %s", _apps[_current_id]->name);
 
     _current_id = -1;
@@ -89,8 +92,14 @@ void Apps_Class::close() {
     lv_screen_load_anim(
         _screen_launcher,
         LV_SCR_LOAD_ANIM_MOVE_RIGHT,
-        PDA2_ANIM_MS, 0, false
+        PDA2_ANIM_MS, 0, true   // auto_del=true — LVGL сам удалит app-экран после анимации
     );
+}
+
+// ── screen delete callback ───────────────────────────────
+void Apps_Class::_screen_del_cb(lv_event_t* e) {
+    PDA2App* app = (PDA2App*)lv_event_get_user_data(e);
+    if (app) app->screen = nullptr;   // экран реально удалён LVGL — обнуляем указатель
 }
 
 // ── tick ─────────────────────────────────────────────────
@@ -115,7 +124,7 @@ void Apps_Class::tick(uint32_t delta_ms) {
         if (_apps[i]) _apps[i]->onBackground();
     }
 
-    _tick_toast((uint32_t)millis());
+    _tick_toast(pda2_platform_now_ms());
     lv_timer_handler();
 }
 
@@ -132,8 +141,7 @@ void Apps_Class::showToast(const char* text, uint32_t ms) {
     if (!_toast_cont || !_toast_label) return;
     lv_label_set_text(_toast_label, text);
     lv_obj_clear_flag(_toast_cont, LV_OBJ_FLAG_HIDDEN);
-    // lv_obj_move_foreground(_toast_cont);  ← удалить
-    _toast_until = millis() + ms;
+    _toast_until = pda2_platform_now_ms() + ms;
     PDA_LOGI("apps", "Toast: %s (%ums)", text, ms);
 }
 
@@ -154,13 +162,11 @@ void Apps_Class::_btn_cb(lv_event_t* e) {
 
 // ── Build launcher ────────────────────────────────────────
 void Apps_Class::_build_launcher() {
-    // Экран
     _screen_launcher = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(_screen_launcher, lv_color_hex(0x1e2235), 0);
     lv_obj_set_style_bg_opa(_screen_launcher, LV_OPA_COVER, 0);
     lv_obj_clear_flag(_screen_launcher, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Статус-бар
     lv_obj_t* bar = lv_obj_create(_screen_launcher);
     lv_obj_set_size(bar, LV_HOR_RES, 28);
     lv_obj_align(bar, LV_ALIGN_TOP_MID, 0, 0);
@@ -177,10 +183,6 @@ void Apps_Class::_build_launcher() {
     lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1e2235), 0);
     lv_obj_align(_lbl_time, LV_ALIGN_CENTER, 0, 0);
-
-    // Сетка приложений — flex row wrap
-    //   Иконка: PDA2_ICON_SIZE × PDA2_ICON_SIZE, 4 в ряд (PDA2_GRID_COLS)
-    //   gap 16, pad 14
 
     static const lv_coord_t GAP = 16;
 
@@ -201,7 +203,6 @@ void Apps_Class::_build_launcher() {
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
 
     for (uint8_t i = 0; i < _count; i++) {
-        // Ячейка (иконка + подпись)
         lv_obj_t* cell = lv_obj_create(grid);
         lv_obj_set_size(cell, PDA2_ICON_SIZE, PDA2_ICON_SIZE + 24);
         lv_obj_set_style_bg_opa(cell, LV_OPA_TRANSP, 0);
@@ -213,7 +214,6 @@ void Apps_Class::_build_launcher() {
         lv_obj_set_flex_align(cell, LV_FLEX_ALIGN_START,
                               LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-        // Иконка — кнопка
         lv_obj_t* btn = lv_btn_create(cell);
         lv_obj_set_size(btn, PDA2_ICON_SIZE, PDA2_ICON_SIZE);
         lv_obj_set_style_bg_color(btn, lv_color_hex(_icon_colors[i % _n_colors]), 0);
@@ -225,9 +225,8 @@ void Apps_Class::_build_launcher() {
         lv_obj_add_event_cb(btn, _btn_cb, LV_EVENT_CLICKED,
                             (void*)(uintptr_t)i);
         _icon_btns[i] = btn;
-        // Начальное состояние рамки
         lv_obj_set_style_border_color(btn, lv_color_white(), 0);
-        // Первая буква имени как заглушка иконки
+
         char letter[2] = { _apps[i]->name[0], '\0' };
         lv_obj_t* lbl_icon = lv_label_create(btn);
         lv_label_set_text(lbl_icon, letter);
@@ -236,7 +235,6 @@ void Apps_Class::_build_launcher() {
         lv_obj_set_style_bg_opa(lbl_icon, LV_OPA_TRANSP, 0);
         lv_obj_align(lbl_icon, LV_ALIGN_CENTER, 0, 0);
 
-        // Подпись под иконкой
         lv_obj_t* lbl_name = lv_label_create(cell);
         lv_label_set_text(lbl_name, _apps[i]->name);
         lv_obj_set_style_text_color(lbl_name, lv_color_hex(0xdddddd), 0);
@@ -248,7 +246,7 @@ void Apps_Class::_build_launcher() {
         lv_obj_set_style_pad_top(lbl_name, 4, 0);
     }
     _updateLauncherSelection();
-   // Toast
+
     lv_obj_t* layer = lv_layer_top();
 
     _toast_cont = lv_obj_create(layer);
@@ -303,18 +301,17 @@ void Apps_Class::_key_cb(uint8_t keycode, uint8_t modifier, bool pressed) {
     if (!pressed || !_apps_instance) return;
 
     if (_apps_instance->isOpen()) {
-        if (keycode == 41) {           // Esc → закрыть приложение
+        if (keycode == 41) {
             _apps_instance->close();
         } else {
             PDA2App* app = _apps_instance->current();
             if (app) app->onKey(keycode, modifier);
         }
     } else {
-        // Launcher: навигация по иконкам
         switch (keycode) {
-            case 80: case 82: _apps_instance->prev();         break; // ← ↑
-            case 79: case 81: _apps_instance->next();         break; // → ↓
-            case 40:          _apps_instance->openSelected(); break; // Enter
+            case 80: case 82: _apps_instance->prev();         break;
+            case 79: case 81: _apps_instance->next();         break;
+            case 40:          _apps_instance->openSelected(); break;
         }
     }
 }

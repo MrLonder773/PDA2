@@ -9,6 +9,7 @@
 
 #ifdef PDA2_SIM
     #include <string>
+    #include <cstdint>
     using String = std::string;
 #else
     #include <Arduino.h>

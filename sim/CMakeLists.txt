@@ -44,20 +44,12 @@ set(PDA2_SOURCES
     ${PDA2CORE_SRC}/pda2_platform_sim.cpp
 
     # utility — shared / platform-hook style (no _esp32/_sim split)
-    # ⚠️ KNOWN BLOCKER (found while wiring this up, not yet fixed):
-    #    Apps_Class.cpp unconditionally #includes <Arduino.h> and
-    #    calls millis() twice — needs swap to pda2_platform_now_ms().
     ${PDA2CORE_SRC}/utility/Apps_Class.cpp
-    # ⚠️ KNOWN BLOCKER: Fs_Class.h/.cpp is built on Arduino String
-    #    and unconditionally #includes <LittleFS.h>/<SD.h>/<SPI.h>.
-    #    Fs.begin() is called unconditionally from PDA2Class::begin(),
-    #    so this blocks linking even though FilesApp isn't registered.
-    #    Needs a real decision (stub vs platform-hook split) before
-    #    this file will compile here.
-    ${PDA2CORE_SRC}/utility/Fs_Class.cpp
+    ${PDA2CORE_SRC}/utility/Fs_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/QuickPanel_Class.cpp
     ${PDA2CORE_SRC}/utility/Touch_Class.cpp        # already portable — uses pda2_platform_touch_* hooks
     ${PDA2CORE_SRC}/utility/Usb_Class.cpp
+    ${PDA2CORE_SRC}/utility/Fs_Class.cpp
 
     # utility — _sim implementations
     ${PDA2CORE_SRC}/utility/Bt_Class_sim.cpp
@@ -75,6 +67,21 @@ set(PDA2_SOURCES
     ${PDA2_APPS_SRC}/apps/gltest/render.cpp
     ${PDA2_APPS_SRC}/apps/bluetooth/BluetoothApp.cpp
 
+        # Madgwick (AccelApp)
+    ${PROJECT_SOURCE_DIR}/Madgwick/src/MadgwickAHRS.cpp
+
+    # tgx (GLTestApp)
+    ${PROJECT_SOURCE_DIR}/tgx/src/Color.cpp
+    ${PROJECT_SOURCE_DIR}/tgx/src/Fonts.cpp
+    ${PROJECT_SOURCE_DIR}/tgx/src/Renderer3D.cpp
+
+    # cyrillic fonts
+    ${PDA2CORE_SRC}/fonts/pda2_cyrillic_12.c
+    ${PDA2CORE_SRC}/fonts/pda2_cyrillic_14.c
+    ${PDA2CORE_SRC}/fonts/pda2_cyrillic_16.c
+    ${PDA2CORE_SRC}/fonts/pda2_cyrillic_20.c
+    ${PDA2CORE_SRC}/fonts/pda2_cyrillic_24.c
+
     # sim entry point
     ${PROJECT_SOURCE_DIR}/src/main.cpp
 )
@@ -85,7 +92,7 @@ target_include_directories(pda2_sim PRIVATE
     ${PDA2CORE_SRC}
     ${PDA2_APPS_SRC}
     ${PROJECT_SOURCE_DIR}/tgx/src            # GLTestApp <tgx.h> — vindar/tgx submodule
-    ${PROJECT_SOURCE_DIR}/MadgwickAHRS/src   # AccelApp <MadgwickAHRS.h> — arduino-libraries/MadgwickAHRS submodule
+    ${PROJECT_SOURCE_DIR}/Madgwick/src   # AccelApp <MadgwickAHRS.h> — arduino-libraries/MadgwickAHRS submodule
 )
 
 target_compile_definitions(pda2_sim PRIVATE
@@ -93,7 +100,7 @@ target_compile_definitions(pda2_sim PRIVATE
     LV_CONF_INCLUDE_SIMPLE
 )
 
-target_link_libraries(pda2_sim lvgl ${SDL2_LIBRARIES} m pthread)
+target_link_libraries(pda2_sim lvgl SDL2::SDL2 m pthread)
 
 # ── Debug warnings (kept from the original template) ──────
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

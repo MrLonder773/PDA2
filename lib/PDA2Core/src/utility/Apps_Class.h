@@ -70,4 +70,7 @@ private:
 
     // Callback кнопок launcher
     static void _btn_cb(lv_event_t* e);
+
+    // Callback удаления app-экрана (LV_EVENT_DELETE) — обнуляет PDA2App::screen
+    static void _screen_del_cb(lv_event_t* e);
 };

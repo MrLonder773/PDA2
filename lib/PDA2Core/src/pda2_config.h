@@ -147,6 +147,10 @@
 #define PDA2_SLEEP_TIMEOUT_MS   300000
 #define PDA2_DEBUG_OVERLAY            0
 
+// ── Симулятор ─────────────────────────────────────────────
+#define PDA2_SIM_SD_AVAILABLE 1
+
+
 // ── Quick Panel ───────────────────────────────────────────
 #define PDA2_NOTIF_MAX            8
 #define PDA2_QP_SWIPE_TOP_PCT    15   // тач-жест, на Lite не используется

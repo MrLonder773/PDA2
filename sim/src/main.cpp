@@ -1,15 +1,15 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 SIM — main.cpp
-//  PC entry point (SDL2 + CMake). Mirrors src/main.cpp (ESP32):
-//  PDA.begin() → Apps.add() → Apps.start() → loop → PDA.update().
+//  Точка входа на PC (SDL2 + CMake). Повторяет src/main.cpp (ESP32):
+//  PDA.begin() → Apps.add() → Apps.start() → цикл → PDA.update().
 //
-//  Two things that look missing on purpose:
-//   - SDL event pump (incl. window-close → quit) already lives
-//     inside Usb_Class_sim.cpp (_platformPoll(), called from
-//     Usb.update() inside PDA.update()) — no SDL_PollEvent here.
-//   - lv_timer_handler() is already called every tick inside
-//     Apps_Class::tick() (called from PDA.update()) — do not
-//     call it again here, or LVGL will double-pump.
+//  Две вещи, которые выглядят пропущенными — это намеренно:
+//   - Опрос событий SDL (в т.ч. закрытие окна → выход) уже живёт
+//     внутри Usb_Class_sim.cpp (_platformPoll(), вызывается из
+//     Usb.update() внутри PDA.update()) — SDL_PollEvent здесь не нужен.
+//   - lv_timer_handler() уже вызывается каждый тик внутри
+//     Apps_Class::tick() (вызывается из PDA.update()) — не вызывать
+//     повторно здесь, иначе LVGL будет качать дважды.
 // ════════════════════════════════════════════════════════
 
 #include <PDA2.h>

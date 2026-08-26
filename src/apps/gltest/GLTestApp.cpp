@@ -3,13 +3,16 @@
 //#include "logic.h"
 #include <tgx.h>
 
-void GLTestApp::onInit() {
-    //Гружу классы
-    screen = lv_obj_create(nullptr);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
-}
+// ── onOpen ───────────────────────────────────────────────────────────────
+// Экран ленивый: строится один раз при первом открытии (screen == nullptr).
+// onInit() LVGL не трогает (см. PDA2App.h / правило "ленивые экраны").
 
 void GLTestApp::onOpen() {
+    if (!screen) {
+        screen = lv_obj_create(nullptr);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
+    }
+
     //Старый кусок
     /*
     _zb = ZB_open(W, H, ZB_MODE_5R6G5B, nullptr);
