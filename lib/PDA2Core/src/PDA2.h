@@ -45,6 +45,7 @@
 #include "utility/Touch_Class.h"
 #include "utility/Rtc_Class.h"
 #include "utility/Imu_Class.h"
+#include "utility/Bme_Class.h"
 
 #include <lvgl.h>
 
@@ -70,6 +71,7 @@ public:
     Touch_Class      Touch;
     Rtc_Class        Rtc;
     Imu_Class        Imu;
+    Bme_Class        Bme;
 
     void     begin(config_t cfg = config_t());
     void     update();

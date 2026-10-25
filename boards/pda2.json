@@ -6,8 +6,8 @@
     },
     "core": "esp32",
     "extra_flags": [
-      "-DBOARD_HAS_PSRAM",
-      "-DPDA2_BOARD"
+      "-D BOARD_HAS_PSRAM",
+      "-D PDA2_BOARD"
     ],
     "f_cpu": "240000000L",
     "f_flash": "80000000L",

@@ -49,8 +49,10 @@ set(PDA2_SOURCES
 
     # utility — shared / platform-hook style (no _esp32/_sim split)
     ${PDA2CORE_SRC}/utility/Apps_Class.cpp
-    ${PDA2CORE_SRC}/utility/Fs_Class_sim.cpp
+    ${PDA2CORE_SRC}/utility/Bme_Class.cpp
+    ${PDA2CORE_SRC}/utility/Imu_Class.cpp
     ${PDA2CORE_SRC}/utility/QuickPanel_Class.cpp
+    ${PDA2CORE_SRC}/utility/Rtc_Class.cpp
     ${PDA2CORE_SRC}/utility/Touch_Class.cpp        # already portable — uses pda2_platform_touch_* hooks
     ${PDA2CORE_SRC}/utility/Usb_Class.cpp
     ${PDA2CORE_SRC}/utility/Fs_Class.cpp
@@ -58,7 +60,9 @@ set(PDA2_SOURCES
     # utility — _sim implementations
     ${PDA2CORE_SRC}/utility/Bt_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Display_Class_sim.cpp
+    ${PDA2CORE_SRC}/utility/Fs_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Imu_Class_sim.cpp
+    ${PDA2CORE_SRC}/utility/Bme_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Prefs_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Rtc_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Usb_Class_sim.cpp
@@ -66,20 +70,13 @@ set(PDA2_SOURCES
 
     # apps — контрольный тест CRASH-1: возврат к исходному ростеру
     ${PDA2_APPS_SRC}/apps/clock/ClockApp.cpp
-    ${PDA2_APPS_SRC}/apps/accel/AccelApp.cpp
-    ${PDA2_APPS_SRC}/apps/gltest/GLTestApp.cpp
-    ${PDA2_APPS_SRC}/apps/gltest/render.cpp
+    # ${PDA2_APPS_SRC}/apps/accel/AccelApp.cpp
     ${PDA2_APPS_SRC}/apps/bluetooth/BluetoothApp.cpp
     # ${PDA2_APPS_SRC}/apps/stub/StubApp.cpp
     ${PDA2_APPS_SRC}/apps/tinygltest/TinyGLTestApp.cpp
     
     # Madgwick (AccelApp)
     ${PROJECT_SOURCE_DIR}/Madgwick/src/MadgwickAHRS.cpp
-
-    # tgx (GLTestApp)
-    ${PROJECT_SOURCE_DIR}/tgx/src/Color.cpp
-    ${PROJECT_SOURCE_DIR}/tgx/src/Fonts.cpp
-    ${PROJECT_SOURCE_DIR}/tgx/src/Renderer3D.cpp
 
     # tinygl (TinyGLTestApp)
     ${TINYGL_SOURCES}
@@ -100,7 +97,6 @@ add_executable(pda2_sim ${PDA2_SOURCES})
 target_include_directories(pda2_sim PRIVATE
     ${PDA2CORE_SRC}
     ${PDA2_APPS_SRC}
-    ${PROJECT_SOURCE_DIR}/tgx/src
     ${PROJECT_SOURCE_DIR}/Madgwick/src
     ${TINYGL_ROOT}/include                                 # ← добавить
     ${TINYGL_ROOT}/src                                     # ← добавить

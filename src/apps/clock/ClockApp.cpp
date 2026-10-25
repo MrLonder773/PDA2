@@ -36,7 +36,7 @@ void ClockApp::onInit() {
 void ClockApp::onOpen() {
     if (!screen) {
         screen = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a2438), 0);
         lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
         lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -57,7 +57,7 @@ void ClockApp::onOpen() {
         lv_label_set_text(_lbl_time, "--:--:--");
         lv_obj_set_style_text_font(_lbl_time, &lv_font_montserrat_48, 0);
         lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xffffff), 0);
-        lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a2438), 0);
         lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
         lv_obj_set_style_pad_all(_lbl_time, 0, 0);
 
@@ -66,7 +66,7 @@ void ClockApp::onOpen() {
         lv_label_set_text(_lbl_date, "--- --.--.----");
         lv_obj_set_style_text_font(_lbl_date, &lv_font_montserrat_16, 0);
         lv_obj_set_style_text_color(_lbl_date, lv_color_hex(0xaaaacc), 0);
-        lv_obj_set_style_bg_color(_lbl_date, lv_color_hex(0x1a1a2e), 0);
+        lv_obj_set_style_bg_color(_lbl_date, lv_color_hex(0x1a2438), 0);
         lv_obj_set_style_bg_opa(_lbl_date, LV_OPA_COVER, 0);
         lv_obj_set_style_pad_all(_lbl_date, 0, 0);
     }

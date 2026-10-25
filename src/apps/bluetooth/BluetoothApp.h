@@ -8,7 +8,7 @@
 
 class BluetoothApp : public PDA2App {
 public:
-    BluetoothApp() { name = "BT"; }
+    BluetoothApp() { name = "Bluetooth"; }
 
     void onInit()                                  override;
     void onOpen()                                  override;

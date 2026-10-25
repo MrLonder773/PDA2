@@ -7,12 +7,10 @@
 //  в буфер на ESP32-стороне (see _lcd.setColorDepth(16) в
 //  Display_Class_esp32.cpp) — конвертация не нужна.
 //
-//  raw() — PdaRawDisplay_Sim::pushImage() пишет прямо в SDL2-
-//  текстуру (SDL_UpdateTexture на конкретный SDL_Rect) и сразу
-//  показывает кадр — мимо LVGL-буфера (_buf1), тем же способом,
-//  каким LGFX_Device::pushImage() на железе пишет прямо в LCD
-//  через SPI мимо LVGL. GLTestApp/render.cpp достаёт raw() через
-//  auto&, поэтому компилируется на обеих платформах без правок.
+//  raw() — PdaRawDisplay_Sim::writePixelsDMA() пишет прямо в SDL2-текстуру
+//  (SDL_UpdateTexture на конкретный SDL_Rect) и сразу показывает кадр —
+//  мимо LVGL-буфера (_buf1), как LGFX_Device на железе пишет в LCD мимо LVGL.
+//  TinyGLTestApp вызывает raw() без #ifdef, методы одинаковы на обеих платформах.
 //
 //  Компилируется, только если PDA2_SIM определён —
 //  в прошивке ESP32 тело пустое (см. Display_Class_esp32.cpp).

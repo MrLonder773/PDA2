@@ -43,11 +43,15 @@ void pda2::PDA2Class::begin(config_t cfg) {
     else PDA_LOGI("core", "Rtc ok");
     Imu.begin();
     if (!Imu.ok()) PDA_LOGW("core", "Imu not found");
-    else PDA_LOGI("core", "Imu ok");
-    
+    else PDA_LOGI("core", "Imu ok%s", Imu.magOk() ? " (+mag)" : "");
+    Bme.begin();
+    if (Bme.ok()) PDA_LOGI("core", "Bme ok");
+
     QuickPanel.begin();
     Touch.begin(cfg.rotation);
-    Touch.onHomeGesture    = []() { PDA.Apps.close(); };
+    // Home и свайп вверх из середины: если открыта шторка — закрывают её, иначе home закрывает приложение
+    Touch.onHomeGesture    = []() { if (PDA.QuickPanel.isOpen()) PDA.QuickPanel.close(); else PDA.Apps.close(); };
+    Touch.onSwipeUpMid     = []() { if (PDA.QuickPanel.isOpen()) PDA.QuickPanel.close(); };
     Touch.onSwipeDownLeft  = []() { PDA.QuickPanel.openNotif(); };
     Touch.onSwipeDownRight = []() { PDA.QuickPanel.openSettings(); };
 
@@ -91,6 +95,14 @@ void pda2::PDA2Class::update() {
     uint32_t delta_ms = now - _last_tick_ms;
     _last_tick_ms     = now;
 
+    // Imu: датчики отдают данные на 100 Гц, а опрос стоит ~2.5 мс на I2C 100 кГц —
+    // чаще раза в 10 мс шину не грузим. До Apps.tick(), чтобы onTick() видел свежий кэш.
+    static uint32_t imu_last_ms = 0;
+    if (now - imu_last_ms >= 10) {
+        imu_last_ms = now;
+        Imu.update();
+    }
+    Bme.update(); // сам троттлит до 1 Гц
     Apps.tick(delta_ms);
     Usb.update();
     Bt.update();

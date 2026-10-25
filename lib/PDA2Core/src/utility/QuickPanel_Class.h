@@ -6,6 +6,8 @@
 //  Две шторки поверх всего (lv_layer_top):
 //    — свайп из левой  половины → уведомления
 //    — свайп из правой половины → быстрые настройки
+//  Закрытие: свайп вверх из середины экрана или home-жест
+//  (оба вызывают close() из PDA2.cpp), тап по затемнению.
 // ═══════════════════════════════════════════════════════════
 
 class QuickPanel_Class {
@@ -41,10 +43,10 @@ private:
     lv_obj_t* _lbl_wifi        = nullptr;
 
     // ── Состояние ───────────────────────────────────────────
-    bool      _open                  = false;
-    bool      _ignore_overlay_click  = false;
-    lv_obj_t* _active_panel          = nullptr;
-    int32_t   _active_h              = 0;
+    bool      _open          = false;
+    uint32_t  _open_tick     = 0;       // lv_tick_get() в момент открытия (защита от клика по затемнению)
+    lv_obj_t* _active_panel  = nullptr;
+    int32_t   _active_h      = 0;
 
     // ── Хранилище уведомлений ───────────────────────────────
     struct Notif {

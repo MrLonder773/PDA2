@@ -6,8 +6,7 @@
 #endif
 
 namespace {
-    // Ручная замена gluPerspective — GLU в jserv/tinygl отсутствует,
-    // glFrustum подтверждён как реализованный op (api.c, OP_Frustum).
+    // Ручная замена gluPerspective: GLU в jserv/tinygl отсутствует, glFrustum реализован.
     void gl_frustum_perspective(float fovy_deg, float aspect, float znear, float zfar) {
         float ymax = znear * tanf(fovy_deg * (float)M_PI / 360.0f);
         float ymin = -ymax;
@@ -66,7 +65,7 @@ void TinyGLTestApp::onTick(uint32_t delta_ms) {
         glVertex3f( 1.0f, -1.0f, 0.0f);
     glEnd();
 
-    // тот же путь, что уже отлажен и цветокорректен в render.cpp (TGX-COLOR-1)
+    // тот же путь вывода, что в LVGL flush_cb
     PDA.Display.raw().startWrite();
     PDA.Display.raw().setAddrWindow(0, 0, 320, 480);
     PDA.Display.raw().writePixelsDMA((pda2_pixel_ptr_t)_zb->pbuf, 320 * 480);

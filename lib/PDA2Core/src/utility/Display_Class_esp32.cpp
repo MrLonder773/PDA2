@@ -1,27 +1,16 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 — Display_Class_esp32.cpp
-//  LovyanGFX LGFX_PDA2 + LVGL 9.x RENDER_MODE_PARTIAL
+//  LovyanGFX LGFX_PDA2 (Panel_ST7796) + LVGL 9.x RENDER_MODE_PARTIAL
 //
-//  Почему PARTIAL (актуально с v2.0.64):
-//    Ранее FULL считался обязательным из-за предполагаемого TEAR-1
-//    (PARTIAL → несколько транзакций → мерцание). Тест TEST_PARTIAL_RENDER
-//    показал: тиринг воспроизводится ОДИНАКОВО на FULL и PARTIAL — причина
-//    не в режиме рендера, а в отсутствии TE pin на модуле дисплея
-//    (аппаратное ограничение, не устраняется программно ни в одном режиме).
-//    PARTIAL даёт кратный прирост FPS (32-33 против ~9-16 на FULL) без
-//    дополнительных рисков относительно FULL — принят как боевой режим.
+//  Панель: MSP3526 — ST7796U, 320×480, SPI, RGB565 (2 байта/пиксель).
 //
-//  Два буфера в PSRAM (~1/10 экрана каждый). BL-1 (bus contention)
-//  проверен тем же тестом: ≥5 мин под нагрузкой без порчи кадра,
-//  без крашей/зависаний — не подтверждён, двойная буферизация безопасна.
+//  Боевой режим — PARTIAL: два буфера в PSRAM (~1/10 экрана каждый).
+//  Тиринг аппаратный (нет TE-пина на модуле), одинаков на FULL и PARTIAL,
+//  программно не устраняется.
 //
-//  ILI9488 — 3 байта/пиксель (18-bit) по SPI всегда: 16-bit формат
-//  доступен только в параллельном интерфейсе, LovyanGFX сам форсирует
-//  запись выше 16 бит на bus_spi независимо от setColorDepth(). Снижение
-//  битности как путь роста FPS недоступно на этой архитектуре.
+//  Fade-анимации запрещены (правило 8).
 //
-//  Fade-анимации запрещены — вызывают затемнение на ILI9488
-//  (отдельная причина, не связана с tearing).
+//  Подбор на железе: cfg.rgb_order (красный↔синий), PDA2_SPI_FREQ (артефакты на 79 МГц → 40 МГц → ~27 МГц).
 //
 //  Компилируется, только если PDA2_SIM НЕ определён —
 //  в сборке симулятора тело пустое (см. Display_Class_sim.cpp).
@@ -41,9 +30,9 @@
 #include <lvgl.h>
 #include <esp_heap_caps.h>
 
-// ── LovyanGFX конфигурация для ILI9488 ──────────────────
+// ── LovyanGFX конфигурация для ST7796U ──────────────────
 class LGFX_PDA2 : public lgfx::LGFX_Device {
-    lgfx::Panel_ILI9488 _panel;
+    lgfx::Panel_ST7796  _panel;
     lgfx::Bus_SPI       _bus;
     lgfx::Light_PWM     _light;
 public:
@@ -55,7 +44,7 @@ public:
             cfg.freq_write = PDA2_SPI_FREQ;
             cfg.freq_read  = 16000000;
             cfg.pin_mosi   = PDA2_PIN_MOSI;
-            cfg.pin_miso   = -1;
+            cfg.pin_miso   = -1;            // MISO на модуле не подключён
             cfg.pin_sclk   = PDA2_PIN_SCK;
             cfg.pin_dc     = PDA2_PIN_DC;
             cfg.dma_channel = SPI_DMA_CH_AUTO;
@@ -71,9 +60,7 @@ public:
             cfg.panel_height = PDA2_SCREEN_H;
             cfg.offset_x     = 0;
             cfg.offset_y     = 0;
-            cfg.offset_rotation = 0;
-            cfg.dummy_read_pixel = 8;
-            cfg.dummy_read_bits  = 1;
+            cfg.offset_rotation = PDA2_DISPLAY_ROT_OFFSET;   // физический поворот панели, тач берёт то же значение
             cfg.readable    = false;
             cfg.invert      = true;
             cfg.rgb_order   = false;
@@ -131,9 +118,9 @@ bool Display_Class::begin(uint8_t brightness, uint8_t rotation) {
     _lcd.init();
     _lcd.setRotation(_rotation);
     _lcd.setBrightness(_brightness);
-    _lcd.setColorDepth(16);   // RGB565 на стороне LVGL
+    _lcd.setColorDepth(16);   // RGB565
 
-    PDA_LOGI("display", "LovyanGFX ok. %dx%d rot=%d",
+    PDA_LOGI("display", "LovyanGFX ok (ST7796). %dx%d rot=%d",
              _lcd.width(), _lcd.height(), _rotation);
 
     // LVGL init

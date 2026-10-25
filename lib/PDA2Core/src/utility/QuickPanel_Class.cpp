@@ -13,6 +13,10 @@ static constexpr int32_t CARD_H        = 72;
 static constexpr int32_t CARD_GAP      = 8;
 static constexpr int32_t PANEL_PAD     = 10;
 
+// Клики по затемнению в первые мс после открытия игнорируются:
+// палец, открывший панель свайпом, может отпуститься на затемнении.
+static constexpr uint32_t QP_OVERLAY_GUARD_MS = 300;
+
 // ═══════════════════════════════════════════════════════════
 //  begin
 // ═══════════════════════════════════════════════════════════
@@ -164,10 +168,10 @@ void QuickPanel_Class::openSettings() {
 // ═══════════════════════════════════════════════════════════
 
 void QuickPanel_Class::_open_panel(lv_obj_t* panel, int32_t h) {
-    _active_panel          = panel;
-    _active_h              = h;
-    _open                  = true;
-    _ignore_overlay_click  = true;   // свайп не закрывает панель сразу
+    _active_panel = panel;
+    _active_h     = h;
+    _open         = true;
+    _open_tick    = lv_tick_get();   // клики по затемнению в ближайшие QP_OVERLAY_GUARD_MS игнорируются
 
     lv_obj_clear_flag(_overlay, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(panel, LV_OBJ_FLAG_HIDDEN);
@@ -320,10 +324,7 @@ void QuickPanel_Class::_refresh_notif_list() {
 
 void QuickPanel_Class::_cb_overlay_click(lv_event_t* e) {
     QuickPanel_Class* qp = (QuickPanel_Class*)lv_event_get_user_data(e);
-    if (qp->_ignore_overlay_click) {
-        qp->_ignore_overlay_click = false;
-        return;
-    }
+    if (lv_tick_elaps(qp->_open_tick) < QP_OVERLAY_GUARD_MS) return;
     qp->close();
 }
 

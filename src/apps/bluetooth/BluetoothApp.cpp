@@ -12,7 +12,7 @@ static constexpr int BTN_H   = 40;
 static constexpr int ROW_H   = 36;
 static constexpr int ROW_GAP = 4;
 
-static constexpr uint32_t BG     = 0x101820;
+static constexpr uint32_t BG     = 0x1a2438;
 static constexpr uint32_t BTN_BG = 0x1e3050;
 static constexpr uint32_t DIS_BG = 0x301818;
 static constexpr uint32_t ROW_BG = 0x182030;

@@ -13,8 +13,8 @@ static Apps_Class* _apps_instance = nullptr;
 
 // ── Цвета иконок (по кругу) ──────────────────────────────
 static const uint32_t _icon_colors[] = {
-    0x2563eb, 0x16a34a, 0x9333ea, 0x6b7280,
-    0x0891b2, 0xf97316, 0x0ea5e9, 0xef4444,
+    0x2d64f0, 0x26a43d, 0x7732d2, 0x7e7e7e,
+    0x0fbbd9, 0xf97316, 0x0ea5e9, 0xef4444,
     0x8b5cf6, 0x14b8a6, 0xdc2626, 0x22c55e,
     0xe879f9, 0xfbbf24, 0x34d399, 0xf472b6,
 };
@@ -53,8 +53,13 @@ void Apps_Class::open(uint8_t id) {
         return;
     }
 
-    lv_obj_t* prev_screen = _apps[id]->screen;
+    if (_is_open) {
+        PDA_LOGI("apps", "open(%d): ignored, app already open", id);
+        return;
+    }
 
+    lv_obj_t* prev_screen = _apps[id]->screen;
+    
     _apps[id]->onOpen();   // строит screen лениво, если его ещё нет
 
     if (!_apps[id]->screen) {
@@ -163,7 +168,7 @@ void Apps_Class::_btn_cb(lv_event_t* e) {
 // ── Build launcher ────────────────────────────────────────
 void Apps_Class::_build_launcher() {
     _screen_launcher = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(_screen_launcher, lv_color_hex(0x1e2235), 0);
+    lv_obj_set_style_bg_color(_screen_launcher, lv_color_hex(0x1a2438), 0);
     lv_obj_set_style_bg_opa(_screen_launcher, LV_OPA_COVER, 0);
     lv_obj_clear_flag(_screen_launcher, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -178,13 +183,14 @@ void Apps_Class::_build_launcher() {
 
     _lbl_time = lv_label_create(bar);
     lv_label_set_text(_lbl_time, "--:--");
-    lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xaaaaaa), 0);
+    lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xffffff), 0);
     lv_obj_set_style_text_font(_lbl_time, &lv_font_montserrat_16, 0);
     lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1e2235), 0);
+    lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a2438), 0);
     lv_obj_align(_lbl_time, LV_ALIGN_CENTER, 0, 0);
 
     static const lv_coord_t GAP = 16;
+    static const lv_coord_t CELL_W = (LV_HOR_RES - 28) / 4;   // 4 ячейки в ряд на всю ширину сетки
 
     lv_obj_t* grid = lv_obj_create(_screen_launcher);
     lv_obj_set_size(grid, LV_HOR_RES, LV_VER_RES - 28);
@@ -196,7 +202,7 @@ void Apps_Class::_build_launcher() {
     lv_obj_set_style_pad_top(grid, 14, 0);
     lv_obj_set_style_pad_bottom(grid, 14, 0);
     lv_obj_set_style_pad_row(grid, GAP, 0);
-    lv_obj_set_style_pad_column(grid, GAP, 0);
+    lv_obj_set_style_pad_column(grid, 0, 0);   // расстояние задаёт ширина ячейки
     lv_obj_set_layout(grid, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_START,
@@ -204,7 +210,7 @@ void Apps_Class::_build_launcher() {
 
     for (uint8_t i = 0; i < _count; i++) {
         lv_obj_t* cell = lv_obj_create(grid);
-        lv_obj_set_size(cell, PDA2_ICON_SIZE, PDA2_ICON_SIZE + 24);
+        lv_obj_set_size(cell, CELL_W, PDA2_ICON_SIZE + 40);
         lv_obj_set_style_bg_opa(cell, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(cell, 0, 0);
         lv_obj_set_style_pad_all(cell, 0, 0);
@@ -237,12 +243,12 @@ void Apps_Class::_build_launcher() {
 
         lv_obj_t* lbl_name = lv_label_create(cell);
         lv_label_set_text(lbl_name, _apps[i]->name);
-        lv_obj_set_style_text_color(lbl_name, lv_color_hex(0xdddddd), 0);
+        lv_obj_set_style_text_color(lbl_name, lv_color_hex(0xffffff), 0);
         lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_12, 0);
         lv_obj_set_style_bg_opa(lbl_name, LV_OPA_TRANSP, 0);
         lv_obj_set_style_text_align(lbl_name, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_long_mode(lbl_name, LV_LABEL_LONG_WRAP);
-        lv_obj_set_width(lbl_name, PDA2_ICON_SIZE);
+        lv_obj_set_width(lbl_name, CELL_W);
         lv_obj_set_style_pad_top(lbl_name, 4, 0);
     }
     _updateLauncherSelection();

@@ -83,9 +83,10 @@ static bool _copy(const fs::path& from, const fs::path& to) {
 bool FsInternal::begin() {
     _ok = _ensure_root(SIM_FS_INTERNAL_ROOT);
     if (_ok)
-        PDA_LOGI("fs.int", "sim FS ok (%s). Free: %u / %u",
+        PDA_LOGI("fs.int", "sim FS ok (%s). Free: %u / %u MB",
                  SIM_FS_INTERNAL_ROOT,
-                 (unsigned)freeSpace(), (unsigned)totalSpace());
+                 (unsigned)(freeSpace() / (1024ULL * 1024ULL)),
+                 (unsigned)(totalSpace() / (1024ULL * 1024ULL)));
     else
         PDA_LOGE("fs.int", "sim FS mkdir failed (%s)", SIM_FS_INTERNAL_ROOT);
     return _ok;
@@ -181,18 +182,18 @@ size_t FsInternal::dirSize(const char* path) {
     return _dirSize(_full(SIM_FS_INTERNAL_ROOT, path));
 }
 
-size_t FsInternal::freeSpace() {
+uint64_t FsInternal::freeSpace() {
     if (!_ok) return 0;
     std::error_code ec;
     fs::space_info si = fs::space(SIM_FS_INTERNAL_ROOT, ec);
-    return ec ? 0 : (size_t)si.available;
+    return ec ? 0 : (uint64_t)si.available;
 }
 
-size_t FsInternal::totalSpace() {
+uint64_t FsInternal::totalSpace() {
     if (!_ok) return 0;
     std::error_code ec;
     fs::space_info si = fs::space(SIM_FS_INTERNAL_ROOT, ec);
-    return ec ? 0 : (size_t)si.capacity;
+    return ec ? 0 : (uint64_t)si.capacity;
 }
 
 // ════════════════════════════════════════════════════════
@@ -210,8 +211,10 @@ bool FsSd::begin() {
     _ok = false;
 #endif
     if (_ok)
-        PDA_LOGI("fs.sd", "sim SD ok (%s). Free: %u / %u",
-                 SIM_FS_SD_ROOT, (unsigned)freeSpace(), (unsigned)totalSpace());
+        PDA_LOGI("fs.sd", "sim SD ok (%s). Free: %u / %u MB",
+                 SIM_FS_SD_ROOT,
+                 (unsigned)(freeSpace() / (1024ULL * 1024ULL)),
+                 (unsigned)(totalSpace() / (1024ULL * 1024ULL)));
     else
         PDA_LOGI("fs.sd", "sim SD not available (PDA2_SIM_SD_AVAILABLE)");
     return _ok;
@@ -307,18 +310,18 @@ size_t FsSd::dirSize(const char* path) {
     return _dirSize(_full(SIM_FS_SD_ROOT, path));
 }
 
-size_t FsSd::freeSpace() {
+uint64_t FsSd::freeSpace() {
     if (!_ok) return 0;
     std::error_code ec;
     fs::space_info si = fs::space(SIM_FS_SD_ROOT, ec);
-    return ec ? 0 : (size_t)si.available;
+    return ec ? 0 : (uint64_t)si.available;
 }
 
-size_t FsSd::totalSpace() {
+uint64_t FsSd::totalSpace() {
     if (!_ok) return 0;
     std::error_code ec;
     fs::space_info si = fs::space(SIM_FS_SD_ROOT, ec);
-    return ec ? 0 : (size_t)si.capacity;
+    return ec ? 0 : (uint64_t)si.capacity;
 }
 
 #endif // PDA2_SIM

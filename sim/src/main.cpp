@@ -20,10 +20,7 @@
 #include "pda2_platform.h"
 
 #include "apps/clock/ClockApp.h"
-#include "apps/accel/AccelApp.h"
-#include "apps/gltest/GLTestApp.h"
 #include "apps/bluetooth/BluetoothApp.h"
-// #include "apps/stub/StubApp.h"
 #include "apps/tinygltest/TinyGLTestApp.h"
 
 int main(int argc, char** argv) {
@@ -33,13 +30,15 @@ int main(int argc, char** argv) {
     PDA.begin(cfg);
 
     PDA.Apps.add(new ClockApp());
-    PDA.Apps.add(new AccelApp());
-    PDA.Apps.add(new GLTestApp());
     PDA.Apps.add(new BluetoothApp());
-    // PDA.Apps.add(new StubApp());
     PDA.Apps.add(new TinyGLTestApp());
 
     PDA.Apps.start();
+
+    PDA.notify("Test(not App)", "test yvedomlenya, pishy latinitseq");
+    PDA.notify("TestApp", "xaia! kak tebe yvedomlenye?");
+    PDA.notify("ClockApp", "Test notification");
+    PDA.notify("NotesApp", "File saved");
 
     while (!pda2_platform_should_quit()) {
         PDA.update();

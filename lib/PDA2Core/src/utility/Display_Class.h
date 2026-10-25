@@ -10,21 +10,15 @@ namespace lgfx { inline namespace v1 {
 } }
 
 // Тип указателя на пиксель для writePixelsDMA() — платформенный.
-// render.cpp вызывает writePixelsDMA() один раз, без #ifdef,
-// приводя im.data() к этому типу; конкретный тип разный по платформам.
+// TinyGLTestApp приводит свой буфер к этому типу без #ifdef.
 using pda2_pixel_ptr_t = lgfx::rgb565_t*;
 
 #else
 
 // Минимальная PC-совместимая замена LGFX_Device для raw().
-// Раньше здесь был только pushImage() — высокоуровневый метод
-// LovyanGFX, который сам конвертирует/свопает переданные пиксели.
-// На нём был найден цветовой баг GLTestApp на физическом PDA2
-// (фиолетовый уезжал в зелёный/циан, см. session doc, TGX-COLOR-1) —
-// pushImage() убран. Вместо него — тот же низкоуровневый путь,
-// что уже подтверждённо даёт верные цвета в LVGL flush_cb на обеих
-// платформах: startWrite/setAddrWindow/writePixelsDMA/endWrite.
-// Эмулирует контракт реального LGFX_Device под ту же сигнатуру вызова.
+// Повторяет низкоуровневый путь LVGL flush_cb: startWrite/setAddrWindow/
+// writePixelsDMA/endWrite. Высокоуровневый pushImage() не используется:
+// он сам конвертирует пиксели и на железе даёт неверные цвета.
 class PdaRawDisplay_Sim {
 public:
     void startWrite();
@@ -53,13 +47,11 @@ public:
     int     width();
     int     height();
 
-    // ⚠️ Прямой доступ к display-объекту, в обход общей абстракции Display_Class.
-    // Осознанное исключение из ПРАВИЛА 4 — только для GLTestApp (см. session doc).
-    // Тип раздваивается по платформе: на ESP32 — реальный LGFX_Device,
-    // на симуляторе — PdaRawDisplay_Sim с тем же набором методов
-    // (startWrite/setAddrWindow/writePixelsDMA/endWrite). Вызывающий код
-    // (render.cpp) берёт тип через auto&, поэтому ему всё равно, какая
-    // из двух реализаций подставлена.
+    // ⚠️ Прямой доступ к display-объекту в обход Display_Class.
+    // Исключение из ПРАВИЛА 4 — только для TinyGLTestApp.
+    // Тип зависит от платформы: на ESP32 реальный LGFX_Device, на симуляторе
+    // PdaRawDisplay_Sim с теми же методами (startWrite/setAddrWindow/
+    // writePixelsDMA/endWrite), поэтому вызывающий код одинаков на обеих.
 #ifndef PDA2_SIM
     lgfx::v1::LGFX_Device& raw();
 #else

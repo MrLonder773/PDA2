@@ -131,11 +131,11 @@ size_t FsInternal::dirSize(const char* path) {
     return total;
 }
 
-size_t FsInternal::freeSpace() {
+uint64_t FsInternal::freeSpace() {
     return _ok ? (LittleFS.totalBytes() - LittleFS.usedBytes()) : 0;
 }
 
-size_t FsInternal::totalSpace() {
+uint64_t FsInternal::totalSpace() {
     return _ok ? LittleFS.totalBytes() : 0;
 }
 
@@ -154,8 +154,9 @@ bool FsSd::begin() {
                  PDA2_PIN_SD_MOSI, PDA2_PIN_SD_CS);
     _ok = SD.begin(PDA2_PIN_SD_CS, _spiSd);
     if (_ok)
-        PDA_LOGI("fs.sd", "SD ok. Free: %u / %u",
-                 SD.totalBytes() - SD.usedBytes(), SD.totalBytes());
+        PDA_LOGI("fs.sd", "SD ok. Free: %u / %u MB",
+                 (unsigned)(freeSpace() / (1024ULL * 1024ULL)),
+                 (unsigned)(totalSpace() / (1024ULL * 1024ULL)));
     else
         PDA_LOGE("fs.sd", "SD mount failed");
     return _ok;
@@ -263,11 +264,11 @@ size_t FsSd::dirSize(const char* path) {
     return total;
 }
 
-size_t FsSd::freeSpace() {
+uint64_t FsSd::freeSpace() {
     return _ok ? (SD.totalBytes() - SD.usedBytes()) : 0;
 }
 
-size_t FsSd::totalSpace() {
+uint64_t FsSd::totalSpace() {
     return _ok ? SD.totalBytes() : 0;
 }
 

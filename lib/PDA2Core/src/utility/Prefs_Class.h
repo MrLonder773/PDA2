@@ -35,7 +35,7 @@ public:
     bool    getWifi();
     void    setWifi(bool val);
 
-        // WiFi STA / AP учётки
+    // WiFi STA / AP учётки
     PdaStr32 getWifiSSID();
     void     setWifiSSID(const PdaStr32& ssid);
     PdaStr32 getWifiPass();
@@ -45,7 +45,7 @@ public:
     PdaStr32 getApPass();
     void     setApPass(const PdaStr32& pass);
 
-     // Bluetooth 
+    // Bluetooth
     bool    getBtEnabled();
     void    setBtEnabled(bool val);
     PdaStr32 getBtLastDevice();          // "aa:bb:cc:dd:ee:ff" (lowercase)
@@ -54,4 +54,20 @@ public:
     void    setBtLastDeviceType(uint8_t t);
     PdaStr32 getBtLastDeviceName();
     void     setBtLastDeviceName(const PdaStr32& name);
+
+    // Магнитометр: hard-iron offset (сырые коды QMC5883L)
+    bool    getMagOffset(int16_t out[3]);        // false — не сохранён, out не тронут
+    void    setMagOffset(const int16_t in[3]);
+    void    clearMagOffset();
+
+    // Давление на уровне моря для абсолютной высоты, гПа (default 1013.25)
+    float   getQnh();
+    void    setQnh(float hpa);
+
+    // Часовой пояс (используется Rtc_Class): стандартное смещение от UTC, минуты
+    // (default 120 = Киев) и правило перехода на летнее время (0=OFF, 1=EU; default 1)
+    int16_t getTzOffset();
+    void    setTzOffset(int16_t minutes);
+    uint8_t getDstRule();
+    void    setDstRule(uint8_t rule);
 };

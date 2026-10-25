@@ -40,12 +40,12 @@ uint32_t pda2_platform_free_psram();
 void* pda2_platform_psram_malloc(size_t size);
 
 // Touch — начать/проверить наличие устройства.
-// ESP32: сброс FT6236 через GPIO + проверка по I2C.
+// ESP32: сброс FT6236/FT6336U через GPIO + проверка по I2C (Chip ID — в лог).
 // PC: всегда true, мышь есть всегда.
 bool pda2_platform_touch_begin();
 
 // Touch — прочитать текущее состояние.
-// ESP32: сырые координаты FT6236 (до коррекции rotation —
+// ESP32: сырые координаты FT6236/FT6336U (до коррекции rotation —
 //        коррекцию делает Touch_Class::_transform()).
 // PC: координаты мыши УЖЕ в конечном логическом пространстве
 //     экрана (окно SDL и есть логический экран, корректировать

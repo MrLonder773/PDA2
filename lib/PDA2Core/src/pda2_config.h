@@ -23,7 +23,7 @@
   #define PDA2_PIN_MOSI    11
   #define PDA2_PIN_SCK     12
   #define PDA2_PIN_BL      46
-  #define PDA2_SPI_FREQ    79000000
+  #define PDA2_SPI_FREQ    80000000
   #define PDA2_SPI_FREQ_BL 50000
 
 // ── SD карта (отдельная SPI-шина, не протестирована на железе) ──
@@ -73,18 +73,22 @@
 #define PDA2_PIN_PWR_OFF     41   // выход, импульс = мягкое выключение
 
 // ── GPIO45/47 свободны ────────────────────────────────────
-// Ранее резервировались под nRF24 (делил SPI-шину с SD). Модуль
-// исключён из диапазона устройства вместе с SIM800L/GPS/IR —
-// не нужны, mutex SD/nRF24 проектировать не требуется. Пины не
-// зарезервированы, доступны для будущих нужд.
+// Предназначены для опционального съёмного nRF24 (CE/CSN, делит SPI
+// с SD). Владение динамическое — выдаются через PDA.Gpio.claim(),
+// в конфиге зарезервированы как общего назначения.
+// SIM800L/GPS/IR исключены из устройства навсегда.
 
 // ── LED ───────────────────────────────────────────────────
 #define PDA2_PIN_LED       48
 
 // ── Экран ───────────────────────────────────────────────
-  #define PDA2_SCREEN_W     320
-  #define PDA2_SCREEN_H     480
-  #define PDA2_ROTATION       2
+// Физический поворот панели относительно «нативной» ориентации (0..3).
+// Один источник правды: его читают и Display_Class_esp32 (offset_rotation),
+// и Touch_Class (_transform) — тач всегда следует за картинкой.
+#define PDA2_DISPLAY_ROT_OFFSET 2  
+#define PDA2_SCREEN_W     320
+#define PDA2_SCREEN_H     480
+#define PDA2_ROTATION       2
 
 // ── UI / Apps ───────────────────────────────────────────
 #define PDA2_MAX_APPS      16
@@ -97,25 +101,25 @@
 #define PDA2_NOTES_MAX_FILES  20
 
 // ── AccelApp canvas ───────────────────────────────────────
-  #define PDA2_ACCEL_CANVAS_W   280
-  #define PDA2_ACCEL_CANVAS_H   370
-  #define PDA2_ACCEL_CANVAS_X   20
-  #define PDA2_ACCEL_CANVAS_Y   10
-  #define PDA2_ACCEL_STRIP_H    100
-  #define PDA2_ACCEL_CUBE_CX    140
-  #define PDA2_ACCEL_CUBE_CY    185
-  #define PDA2_ACCEL_CUBE_SIZE   80
-  #define PDA2_ACCEL_BG_COLOR    0x0f172a
-  #define PDA2_ACCEL_FOCAL       300
-  #define PDA2_ACCEL_AXIS_LEN    96
-  #define PDA2_ACCEL_TICK_MS     33
-  #define PDA2_ACCEL_GYRO_DEADZONE  1.5f
-  #define PDA2_ACCEL_GYRO_SIGN_X   (-1)
-  #define PDA2_ACCEL_GYRO_SIGN_Y   (-1)
-  #define PDA2_ACCEL_GYRO_SIGN_Z   (-1)
-  #define PDA2_ACCEL_GYRO_MAP_X     0
-  #define PDA2_ACCEL_GYRO_MAP_Y     2
-  #define PDA2_ACCEL_GYRO_MAP_Z     1
+  // #define PDA2_ACCEL_CANVAS_W   280
+  // #define PDA2_ACCEL_CANVAS_H   370
+  // #define PDA2_ACCEL_CANVAS_X   20
+  // #define PDA2_ACCEL_CANVAS_Y   10
+  // #define PDA2_ACCEL_STRIP_H    100
+  // #define PDA2_ACCEL_CUBE_CX    140
+  // #define PDA2_ACCEL_CUBE_CY    185
+  // #define PDA2_ACCEL_CUBE_SIZE   80
+  // #define PDA2_ACCEL_BG_COLOR    0x0f172a
+  // #define PDA2_ACCEL_FOCAL       300
+  // #define PDA2_ACCEL_AXIS_LEN    96
+  // #define PDA2_ACCEL_TICK_MS     33
+  // #define PDA2_ACCEL_GYRO_DEADZONE  1.5f
+  // #define PDA2_ACCEL_GYRO_SIGN_X   (-1)
+  // #define PDA2_ACCEL_GYRO_SIGN_Y   (-1)
+  // #define PDA2_ACCEL_GYRO_SIGN_Z   (-1)
+  // #define PDA2_ACCEL_GYRO_MAP_X     0
+  // #define PDA2_ACCEL_GYRO_MAP_Y     2
+  // #define PDA2_ACCEL_GYRO_MAP_Z     1
 
 // ── Launcher ──────────────────────────────────────────────
 #define PDA2_LAUNCHER_GRID        0

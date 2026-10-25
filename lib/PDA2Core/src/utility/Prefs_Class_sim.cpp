@@ -47,6 +47,13 @@ static PdaStr32 _wifi_pass;
 static PdaStr32 _ap_ssid;
 static PdaStr32 _ap_pass;
 
+static int16_t  _mag_off[3]   = {0, 0, 0};
+static bool     _mag_valid    = false;   // false = offset не сохранён
+static float    _qnh          = 1013.25f;
+
+static int16_t  _tz_off       = 120;     // минуты от UTC (стандартное время), Киев
+static uint8_t  _dst_rule     = 1;       // 0=OFF, 1=EU
+
 // ── Сохранение всего набора разом ────────────────────────
 static void _save() {
     FILE* f = fopen(PREFS_FILE, "w");
@@ -68,6 +75,11 @@ static void _save() {
     fprintf(f, "bt_last=%s\n", _bt_last.c_str());
     fprintf(f, "bt_last_t=%u\n", _bt_last_t);
     fprintf(f, "bt_last_n=%s\n", _bt_last_n.c_str());
+    fprintf(f, "qnh=%.2f\n", _qnh);
+    fprintf(f, "tz_off=%d\n", _tz_off);
+    fprintf(f, "dst_rule=%u\n", _dst_rule);
+    if (_mag_valid)
+        fprintf(f, "mag_off=%d,%d,%d\n", _mag_off[0], _mag_off[1], _mag_off[2]);
     fclose(f);
 }
 
@@ -103,6 +115,16 @@ void Prefs_Class::begin() {
         else if (!strcmp(key, "bt_last"))    _bt_last    = val;
         else if (!strcmp(key, "bt_last_t"))  _bt_last_t  = (uint8_t)atoi(val);
         else if (!strcmp(key, "bt_last_n"))  _bt_last_n  = val;
+        else if (!strcmp(key, "qnh"))        _qnh        = (float)atof(val);
+        else if (!strcmp(key, "tz_off"))     _tz_off     = (int16_t)atoi(val);
+        else if (!strcmp(key, "dst_rule"))   _dst_rule   = (uint8_t)atoi(val);
+        else if (!strcmp(key, "mag_off")) {
+            int x, y, z;
+            if (sscanf(val, "%d,%d,%d", &x, &y, &z) == 3) {
+                _mag_off[0] = (int16_t)x; _mag_off[1] = (int16_t)y; _mag_off[2] = (int16_t)z;
+                _mag_valid = true;
+            }
+        }
     }
     fclose(f);
     PDA_LOGI("prefs", "SIM: loaded %s", PREFS_FILE);
@@ -143,5 +165,24 @@ uint8_t  Prefs_Class::getBtLastDeviceType()             { return _bt_last_t; }
 void     Prefs_Class::setBtLastDeviceType(uint8_t t)    { _bt_last_t = t; _save(); }
 PdaStr32 Prefs_Class::getBtLastDeviceName()                 { return _bt_last_n; }
 void     Prefs_Class::setBtLastDeviceName(const PdaStr32& n){ _bt_last_n = n.c_str(); _save(); }
+
+bool Prefs_Class::getMagOffset(int16_t out[3]) {
+    if (!_mag_valid) return false;
+    out[0] = _mag_off[0]; out[1] = _mag_off[1]; out[2] = _mag_off[2];
+    return true;
+}
+void Prefs_Class::setMagOffset(const int16_t in[3]) {
+    _mag_off[0] = in[0]; _mag_off[1] = in[1]; _mag_off[2] = in[2];
+    _mag_valid = true; _save();
+}
+void Prefs_Class::clearMagOffset() { _mag_valid = false; _save(); }
+
+float Prefs_Class::getQnh()          { return _qnh; }
+void  Prefs_Class::setQnh(float hpa) { _qnh = hpa; _save(); }
+
+int16_t Prefs_Class::getTzOffset()            { return _tz_off; }
+void    Prefs_Class::setTzOffset(int16_t min) { _tz_off = min; _save(); }
+uint8_t Prefs_Class::getDstRule()             { return _dst_rule; }
+void    Prefs_Class::setDstRule(uint8_t rule) { _dst_rule = rule; _save(); }
 
 #endif // PDA2_SIM

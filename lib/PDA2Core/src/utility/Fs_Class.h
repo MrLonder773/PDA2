@@ -44,8 +44,8 @@ public:
 
     virtual size_t size(const char* path)                         = 0;
     virtual size_t dirSize(const char* path)                      = 0;
-    virtual size_t freeSpace()                                    = 0;
-    virtual size_t totalSpace()                                   = 0;
+    virtual uint64_t freeSpace()                                    = 0;
+    virtual uint64_t totalSpace()                                   = 0;
 };
 
 // ── LittleFS ────────────────────────────────────────────
@@ -73,8 +73,8 @@ public:
 
     size_t size(const char* path)                         override;
     size_t dirSize(const char* path)                      override;
-    size_t freeSpace()                                    override;
-    size_t totalSpace()                                   override;
+    uint64_t freeSpace()                                    override;
+    uint64_t totalSpace()                                   override;
 
 private:
     bool _ok = false;
@@ -105,8 +105,8 @@ public:
 
     size_t size(const char* path)                         override;
     size_t dirSize(const char* path)                      override;
-    size_t freeSpace()                                    override;
-    size_t totalSpace()                                   override;
+    uint64_t freeSpace()                                    override;
+    uint64_t totalSpace()                                   override;
 
 private:
     bool _ok = false;

@@ -12,6 +12,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <esp_heap_caps.h>
+#include "pda2_config.h"
+#include "pda2_log.h"
 
 void pda2_platform_begin() {
     Serial.begin(115200);
@@ -43,8 +45,7 @@ void* pda2_platform_psram_malloc(size_t size) {
     return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
 }
 
-// ── Touch: FT6236, raw I2C ───────────────────────────────
-#include "pda2_config.h"
+// ── Touch: FT6236/FT6336U, raw I2C ───────────────────────
 
 bool pda2_platform_touch_begin() {
     pinMode(PDA2_PIN_TOUCH_RST, OUTPUT);
@@ -55,7 +56,15 @@ bool pda2_platform_touch_begin() {
 
     Wire.beginTransmission(PDA2_I2C_TOUCH);
     uint8_t err = Wire.endTransmission();
-    return err == 0;
+    if (err != 0) return false;
+
+    Wire.beginTransmission(PDA2_I2C_TOUCH);
+    Wire.write(0xA3);   // Chip ID: 0x64 = FT6336U, 0x36 = FT6236
+    if (Wire.endTransmission(false) == 0 &&
+        Wire.requestFrom((uint8_t)PDA2_I2C_TOUCH, (uint8_t)1) == 1) {
+        PDA_LOGI("touch", "chip id 0x%02X", Wire.read());
+    }
+    return true;
 }
 
 bool pda2_platform_touch_read(int32_t& x, int32_t& y) {

@@ -88,4 +88,23 @@ void     Prefs_Class::setBtLastDeviceType(uint8_t t)  { _prefs.putUChar("bt_last
 PdaStr32 Prefs_Class::getBtLastDeviceName()               { return PdaStr32(_prefs.getString("bt_last_n", "").c_str()); }
 void     Prefs_Class::setBtLastDeviceName(const PdaStr32& n){ _prefs.putString("bt_last_n", n.c_str()); }
 
+bool Prefs_Class::getMagOffset(int16_t out[3]) {
+    if (!_prefs.isKey("mag_off")) return false;
+    if (_prefs.getBytesLength("mag_off") != sizeof(int16_t) * 3) return false;
+    int16_t tmp[3];
+    if (_prefs.getBytes("mag_off", tmp, sizeof(tmp)) != sizeof(tmp)) return false;
+    out[0] = tmp[0]; out[1] = tmp[1]; out[2] = tmp[2];
+    return true;
+}
+void Prefs_Class::setMagOffset(const int16_t in[3]) { _prefs.putBytes("mag_off", in, sizeof(int16_t) * 3); }
+void Prefs_Class::clearMagOffset()                  { _prefs.remove("mag_off"); }
+
+float Prefs_Class::getQnh()           { return _prefs.getFloat("qnh", 1013.25f); }
+void  Prefs_Class::setQnh(float hpa)  { _prefs.putFloat("qnh", hpa); }
+
+int16_t Prefs_Class::getTzOffset()            { return _prefs.getShort("tz_off", 120); }
+void    Prefs_Class::setTzOffset(int16_t min) { _prefs.putShort("tz_off", min); }
+uint8_t Prefs_Class::getDstRule()             { return _prefs.getUChar("dst_rule", 1); }
+void    Prefs_Class::setDstRule(uint8_t rule) { _prefs.putUChar("dst_rule", rule); }
+
 #endif // !PDA2_SIM

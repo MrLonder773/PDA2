@@ -1,7 +1,10 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 — Imu_Class_sim.cpp
 //  PC-реализация: фейковые данные покоя (лежит экраном вверх)
-//  + небольшой случайный шум по всем осям.
+//  + небольшой шум. Магнитометр: поле медленно вращается
+//  (heading() крутится ~15°/с) и имеет постоянное смещение
+//  hard-iron. Во время калибровки поле «кувыркается» по всей
+//  сфере, чтобы калибровку можно было пройти без платы.
 //  Компилируется, только если PDA2_SIM определён —
 //  в прошивке ESP32 тело пустое (см. Imu_Class_esp32.cpp).
 // ════════════════════════════════════════════════════════
@@ -14,6 +17,8 @@
 
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
+#include <chrono>
 
 static bool _seeded = false;
 
@@ -22,32 +27,54 @@ static float _jitter(float range) {
     return ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * range;
 }
 
+static float _t_sec() {
+    static const auto t0 = std::chrono::steady_clock::now();
+    return std::chrono::duration<float>(std::chrono::steady_clock::now() - t0).count();
+}
+
 void Imu_Class::begin() {
     if (!_seeded) {
         srand((unsigned)time(nullptr));
         _seeded = true;
     }
     _ok = true;
-    PDA_LOGI("imu", "SIM: fake IMU ok (resting, az~1g)");
+    _mag_present = true;
+    _mag_fail = 0;
+    _load_mag_offset();
+    update();
+    PDA_LOGI("imu", "SIM: fake IMU+mag ok (resting, az~1g)");
 }
 
-bool Imu_Class::ok() { return _ok; }
-
-pda2_imu_t Imu_Class::get() {
-    pda2_imu_t d = {};
-    if (!_ok) return d;
-
+void Imu_Class::update() {
     // Покой, экран вверх: почти вся гравитация на Z, лёгкий шум на X/Y.
-    d.ax = _jitter(0.03f);
-    d.ay = _jitter(0.03f);
-    d.az = 1.0f + _jitter(0.02f);
+    _set_accel_gyro(_jitter(0.03f), _jitter(0.03f), 1.0f + _jitter(0.02f),
+                    _jitter(1.5f),  _jitter(1.5f),  _jitter(1.5f));
 
-    // Гироскоп — почти неподвижно, лёгкий дрожащий шум.
-    d.gx = _jitter(1.5f);
-    d.gy = _jitter(1.5f);
-    d.gz = _jitter(1.5f);
+    // Магнитометр: |B| ≈ 49 µT (горизонталь 20, вертикаль вниз 45) + hard-iron.
+    const float B_H = 20.0f, B_V = 45.0f;
+    const float bias[3] = {12.0f, -7.0f, 20.0f};
+    const float t = _t_sec();
+    float v[3];
 
-    return d;
+    if (_calibrating) {
+        float B = sqrtf(B_H * B_H + B_V * B_V);
+        float a = 0.6f * t, b = 1.7f * t;
+        v[0] = B * sinf(a) * cosf(b);
+        v[1] = B * sinf(a) * sinf(b);
+        v[2] = B * cosf(a);
+    } else {
+        float psi = 15.0f * t * 0.01745329f;    // азимут верха экрана
+        v[0] = -B_H * sinf(psi);
+        v[1] =  B_H * cosf(psi);
+        v[2] = -B_V;
+    }
+
+    int16_t raw[3];
+    for (int i = 0; i < 3; i++)
+        raw[i] = (int16_t)lroundf((v[i] + bias[i] + _jitter(0.3f)) * MAG_LSB_PER_UT);
+
+    _mag_bus_result(true);
+    _set_mag_raw(raw[0], raw[1], raw[2]);
 }
 
 #endif // PDA2_SIM

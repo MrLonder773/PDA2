@@ -54,7 +54,7 @@ void tgl_fixme(const char *format, ...)
 #endif /* !NO_DEBUG_OUTPUT */
 }
 
-void gl_fatal_error(char *format, ...)
+void gl_fatal_error(const char *format, ...)
 {
 #ifndef NO_DEBUG_OUTPUT
     va_list ap;
