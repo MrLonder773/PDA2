@@ -94,15 +94,26 @@ bool Bt_Class::begin() {
     _instance = this;
     _queue = xQueueCreate(16, sizeof(BtEvt));
     if (!_queue) { PDA_LOGE(TAG, "queue create failed"); return false; }
-    NimBLEDevice::init("");
+    PDA_LOGI(TAG, "ready, NimBLE init deferred to enable()");
+    return true;
+}
+
+// ── ensureStak / enable / disable ──────────────────────────
+// NimBLE поднимается один раз, при первом enable(); дальше стек остаётся поднятым.
+static bool _ensureStack() {
+    if (NimBLEDevice::isInitialized()) return true;
+    if (!NimBLEDevice::init("")) {
+        PDA_LOGE(TAG, "NimBLE init failed");
+        return false;
+    }
     NimBLEDevice::setSecurityAuth(true, false, true);
     PDA_LOGI(TAG, "NimBLE init done");
     return true;
 }
 
-// ── enable / disable ─────────────────────────────────────
 void Bt_Class::enable() {
     if (_state != BT_OFF) return;
+    if (!_ensureStack()) return;     // остаёмся OFF
     _state = BT_IDLE;
     PDA_LOGI(TAG, "enabled → IDLE");
 }
@@ -288,9 +299,9 @@ void Bt_Class::_onDisconnect() {
         _devices[_conn_idx].connected = false;
     _conn_idx   = -1;
     _connecting = false;
-    _state      = BT_IDLE;
+    if (_state != BT_OFF) _state = BT_IDLE;   // disable() мог прийти раньше асинхронного disconnect
     memset(_last_report, 0, sizeof(_last_report));
-    PDA_LOGI(TAG, "disconnected → IDLE");
+    PDA_LOGI(TAG, "disconnected (state %s)", _state == BT_OFF ? "OFF" : "IDLE");
 }
 
 // ── _onReport: HID report parser (BLE task context) ──────

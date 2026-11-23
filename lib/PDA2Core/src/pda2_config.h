@@ -91,10 +91,24 @@
 #define PDA2_ROTATION       2
 
 // ── UI / Apps ───────────────────────────────────────────
-#define PDA2_MAX_APPS      16
+#define PDA2_MAX_APPS         48
+#define PDA2_APPS_PER_PAGE    16   // 4×4; для проверки страниц в sim временно 2–4 //16
 #define PDA2_ANIM_MS      240
 #define PDA2_GRID_COLS      4
 #define PDA2_ICON_SIZE     60
+
+// ── Клавиатура (PDA.Keyboard) ───────────────────────────
+#define PDA2_KB_H        176   // высота: 4 ряда
+#define PDA2_KB_Y        280   // 480 - 24 (низ под полосу home) - 176
+#define PDA2_KB_GAP        2   // зазор между клавишами, px
+#define PDA2_KB_QUEUE      8   // очередь событий get()
+#define PDA2_KB_FIELDS     4   // полей на экран для bind()
+
+#define PDA2_LONG_PRESS_MS 240 // долгое нажатие: подсказки, варианты, старт автоповтора ⌫, мс
+
+#define PDA2_KB_BS_MS     75   // период автоповтора ⌫ при удержании, мс (оценка, подбирать)
+#define PDA2_KB_POP_MS    0    // попап на нажатии: через сколько мс после касания показывать (0 = сразу), оценка
+#define PDA2_KB_POP_HIDE_MS 150  // попап: сколько мс держится после отпускания (0 = прячется сразу), оценка
 
 // ── NotesApp ────────────────────────────────────────────
 #define PDA2_NOTES_MAX_SIZE   8192
@@ -145,6 +159,12 @@
 #define PDA2_QP_SETTINGS_H      200
 #define PDA2_QP_ANIM_MS         220
 
+// ── Fs ────────────────────────────────────────────────────
+#define PDA2_FS_FIND_MAX      64   // максимум результатов Fs.find()
+#define PDA2_FS_READ_MAX      1048576 // 1 МБ PSRAM выделенно для старта как максимум чтения
+#define PDA2_FS_MAX_DEPTH      8   // глубина рекурсии: find, removeAll, dirSize, mkdir
+
 // ── Логирование / NVS ─────────────────────────────────────
 #define PDA2_LOG_LEVEL            3
 #define PDA2_NVS_NS    "pda2"
+#define PDA2_MEM_TASKS_MAX 24   // лимит задач в Memory.tasks()

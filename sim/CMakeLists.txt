@@ -49,13 +49,23 @@ set(PDA2_SOURCES
 
     # utility — shared / platform-hook style (no _esp32/_sim split)
     ${PDA2CORE_SRC}/utility/Apps_Class.cpp
+    ${PDA2CORE_SRC}/utility/Apps_Input.cpp
+    ${PDA2CORE_SRC}/utility/Apps_Launcher.cpp
+    ${PDA2CORE_SRC}/utility/Apps_Toast.cpp
     ${PDA2CORE_SRC}/utility/Bme_Class.cpp
+    ${PDA2CORE_SRC}/utility/Fs_Class.cpp
+    ${PDA2CORE_SRC}/utility/Fs_Volume.cpp
+    ${PDA2CORE_SRC}/utility/HomeBar_Class.cpp
     ${PDA2CORE_SRC}/utility/Imu_Class.cpp
+    ${PDA2CORE_SRC}/utility/Keyboard_Class.cpp
+    ${PDA2CORE_SRC}/utility/Keyboard_Layout.cpp
+    ${PDA2CORE_SRC}/utility/Keyboard_Hints.cpp
+    ${PDA2CORE_SRC}/utility/Memory_Class.cpp
     ${PDA2CORE_SRC}/utility/QuickPanel_Class.cpp
     ${PDA2CORE_SRC}/utility/Rtc_Class.cpp
+    ${PDA2CORE_SRC}/utility/StatusBar_Class.cpp
     ${PDA2CORE_SRC}/utility/Touch_Class.cpp        # already portable — uses pda2_platform_touch_* hooks
     ${PDA2CORE_SRC}/utility/Usb_Class.cpp
-    ${PDA2CORE_SRC}/utility/Fs_Class.cpp
 
     # utility — _sim implementations
     ${PDA2CORE_SRC}/utility/Bt_Class_sim.cpp
@@ -67,6 +77,7 @@ set(PDA2_SOURCES
     ${PDA2CORE_SRC}/utility/Rtc_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Usb_Class_sim.cpp
     ${PDA2CORE_SRC}/utility/Wifi_Class_sim.cpp
+    ${PDA2CORE_SRC}/utility/Memory_Class_sim.cpp
 
     # apps — контрольный тест CRASH-1: возврат к исходному ростеру
     ${PDA2_APPS_SRC}/apps/clock/ClockApp.cpp
@@ -74,6 +85,7 @@ set(PDA2_SOURCES
     ${PDA2_APPS_SRC}/apps/bluetooth/BluetoothApp.cpp
     # ${PDA2_APPS_SRC}/apps/stub/StubApp.cpp
     ${PDA2_APPS_SRC}/apps/tinygltest/TinyGLTestApp.cpp
+    ${PDA2_APPS_SRC}/apps/keyboard/KeyboardTestApp.cpp
     
     # Madgwick (AccelApp)
     ${PROJECT_SOURCE_DIR}/Madgwick/src/MadgwickAHRS.cpp
@@ -88,6 +100,15 @@ set(PDA2_SOURCES
     ${PDA2CORE_SRC}/fonts/pda2_cyrillic_20.c
     ${PDA2CORE_SRC}/fonts/pda2_cyrillic_24.c
 
+    # status bar icons
+    ${PDA2CORE_SRC}/icons/icon_battery.c
+    ${PDA2CORE_SRC}/icons/icon_bt.c
+    ${PDA2CORE_SRC}/icons/icon_wifi_0.c
+    ${PDA2CORE_SRC}/icons/icon_wifi_1.c
+    ${PDA2CORE_SRC}/icons/icon_wifi_2.c
+    ${PDA2CORE_SRC}/icons/icon_wifi_3.c
+    ${PDA2CORE_SRC}/icons/icon_wifi_4.c
+    
     # sim entry point
     ${PROJECT_SOURCE_DIR}/src/main.cpp
 )

@@ -18,6 +18,8 @@ static uint32_t  _fail_at_ms         = 0;
 static constexpr uint32_t STA_CONNECT_TIMEOUT_MS = 15000;
 static constexpr uint32_t STA_RETRY_INTERVAL_MS  = 10000;
 
+static bool      _no_ssid            = false;   // последняя попытка — пустой SSID: не повторять
+
 void Wifi_Class::begin() {
     if (PDA.Prefs.getWifi()) {
         connectSTA(PDA.Prefs.getWifiSSID(), PDA.Prefs.getWifiPass());
@@ -38,6 +40,7 @@ void Wifi_Class::update() {
             break;
 
         case WifiState::STA_FAILED:
+            if (_no_ssid) break;   // SSID не задан — повторять нечего, ждём setEnabled()/connectSTA()
             if (millis() - _fail_at_ms > STA_RETRY_INTERVAL_MS) {
                 PDA_LOGI("wifi", "STA retry");
                 connectSTA(PDA.Prefs.getWifiSSID(), PDA.Prefs.getWifiPass());
@@ -57,10 +60,12 @@ void Wifi_Class::setEnabled(bool on) {
 void Wifi_Class::connectSTA(const PdaStr32& ssid, const PdaStr32& pass) {
     if (ssid.c_str()[0] == '\0') {
         PDA_LOGW("wifi", "connectSTA: empty SSID, skipped");
+        _no_ssid = true;
         _state = WifiState::STA_FAILED;
         _fail_at_ms = millis();
         return;
     }
+    _no_ssid = false;
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), pass.c_str());
     _state = WifiState::STA_CONNECTING;

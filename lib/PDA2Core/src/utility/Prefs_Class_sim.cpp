@@ -53,6 +53,8 @@ static float    _qnh          = 1013.25f;
 
 static int16_t  _tz_off       = 120;     // минуты от UTC (стандартное время), Киев
 static uint8_t  _dst_rule     = 1;       // 0=OFF, 1=EU
+static bool     _fs_mounted   = false;   // LittleFS уже монтировалась (см. Fs_Class::begin)
+static bool     _sb_vis       = true;    // статус-бар виден
 
 // ── Сохранение всего набора разом ────────────────────────
 static void _save() {
@@ -78,6 +80,8 @@ static void _save() {
     fprintf(f, "qnh=%.2f\n", _qnh);
     fprintf(f, "tz_off=%d\n", _tz_off);
     fprintf(f, "dst_rule=%u\n", _dst_rule);
+    fprintf(f, "fs_mounted=%d\n", _fs_mounted ? 1 : 0);
+    fprintf(f, "sb_vis=%d\n", _sb_vis ? 1 : 0);
     if (_mag_valid)
         fprintf(f, "mag_off=%d,%d,%d\n", _mag_off[0], _mag_off[1], _mag_off[2]);
     fclose(f);
@@ -118,6 +122,8 @@ void Prefs_Class::begin() {
         else if (!strcmp(key, "qnh"))        _qnh        = (float)atof(val);
         else if (!strcmp(key, "tz_off"))     _tz_off     = (int16_t)atoi(val);
         else if (!strcmp(key, "dst_rule"))   _dst_rule   = (uint8_t)atoi(val);
+        else if (!strcmp(key, "fs_mounted")) _fs_mounted = atoi(val) != 0;
+        else if (!strcmp(key, "sb_vis"))     _sb_vis     = atoi(val) != 0;
         else if (!strcmp(key, "mag_off")) {
             int x, y, z;
             if (sscanf(val, "%d,%d,%d", &x, &y, &z) == 3) {
@@ -184,5 +190,11 @@ int16_t Prefs_Class::getTzOffset()            { return _tz_off; }
 void    Prefs_Class::setTzOffset(int16_t min) { _tz_off = min; _save(); }
 uint8_t Prefs_Class::getDstRule()             { return _dst_rule; }
 void    Prefs_Class::setDstRule(uint8_t rule) { _dst_rule = rule; _save(); }
+
+bool Prefs_Class::getFsMounted()         { return _fs_mounted; }
+void Prefs_Class::setFsMounted(bool val) { _fs_mounted = val; _save(); }
+
+bool Prefs_Class::getStatusBarVisible()         { return _sb_vis; }
+void Prefs_Class::setStatusBarVisible(bool val) { _sb_vis = val; _save(); }
 
 #endif // PDA2_SIM

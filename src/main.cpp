@@ -7,6 +7,7 @@
 #include "apps/clock/ClockApp.h"
 #include "apps/bluetooth/BluetoothApp.h"
 #include "apps/tinygltest/TinyGLTestApp.h"
+#include "apps/keyboard/KeyboardTestApp.h"
 
 SET_LOOP_TASK_STACK_SIZE(32768);
 
@@ -17,6 +18,7 @@ void setup() {
     PDA.Apps.add(new ClockApp());
     PDA.Apps.add(new BluetoothApp());
     PDA.Apps.add(new TinyGLTestApp());
+    PDA.Apps.add(new KeyboardTestApp());
 
     PDA.Apps.start();
 
@@ -24,6 +26,8 @@ void setup() {
     PDA.notify("TestApp", "xaia! kak tebe yvedomlenye?");
     PDA.notify("ClockApp", "Test notification");
     PDA.notify("NotesApp", "File saved");
+
+    // PDA.toast("−12 -12.5 °C ± × ÷ №",7000);
 }
 
 void loop() {

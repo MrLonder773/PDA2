@@ -20,6 +20,8 @@
 #include "../pda2_config.h"
 #include "../pda2_log.h"
 #include "../pda2_platform.h"
+#include <cstdlib>
+#include <stdio.h>
 
 // ── Статические члены ────────────────────────────────────
 lv_indev_t* Touch_Class::_indev          = nullptr;
@@ -117,6 +119,10 @@ static void _transform(int32_t raw_x, int32_t raw_y,
     }
 }
 
+static int32_t _logical_h(uint8_t rotation) {
+    return (rotation == 1 || rotation == 3) ? PDA2_SCREEN_W : PDA2_SCREEN_H;
+}
+
 // ── LVGL indev read callback ─────────────────────────────
 void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
     int32_t raw_x, raw_y;
@@ -148,16 +154,31 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             _instance->_qp_start_x = (int16_t)tx;
             _instance->_qp_start_y = (int16_t)ty;
             _instance->_qp_fired   = false;
+
+            // ── Home: касание началось в нижней зоне ─────
+            _instance->_home_active =
+                ty > (_logical_h(_instance->_rotation) * PDA2_HOME_SWIPE_PCT / 100);
+            _instance->_home_dy = 0;
         }
         // Обновляем последнюю позицию каждый фрейм
         _swipe_last_y = ty;
-
+        _instance->_dt_last_x = (int16_t)tx;
         // ── Отмена клика (жесты ниже считают по тем же tx/ty) ──
         lv_point_t pt = {tx, ty};
         _click_guard(indev, first_frame, pt);
 
         // ── Скролл LVGL начался — свайп-середина не должен срабатывать ──
         if (!first_frame && lv_indev_get_scroll_obj(indev)) _scroll_seen = true;
+
+        // ── Home: полоса идёт за пальцем ────────────────
+        if (_instance->_home_active) {
+            const int32_t travel = _logical_h(_instance->_rotation) / SWIPE_UP_TRAVEL_DIV;
+            int32_t dy = _swipe_start_y - ty;          // > 0 = вверх
+            if (dy < HOME_DEAD_ZONE) dy = 0;
+            else if (dy > travel)    dy = travel;
+            _instance->_home_dy = dy;
+            if (_instance->onHomeDrag) _instance->onHomeDrag(dy);
+        }
 
         // ── QP: детект свайпа вниз из верхней зоны ──────
         if (!_instance->_qp_fired && _instance->_qp_start_y >= 0) {
@@ -181,6 +202,31 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
         _press_obj  = nullptr;
 
         if (_touching && _swipe_start_y >= 0) {
+            // ── Двойной тап в верхней зоне ──────────────
+            {
+                const uint32_t now = pda2_platform_now_ms();
+                const int32_t  sx  = _instance->_qp_start_x;
+                const int32_t  sy  = _swipe_start_y;
+                const bool is_tap =
+                    sy < DT_ZONE_H &&
+                    (now - _swipe_start_ms) < DT_TAP_MAX_MS &&
+                    abs(_instance->_dt_last_x - sx) <= DT_TAP_MAX_MOVE &&
+                    abs(_swipe_last_y - sy)         <= DT_TAP_MAX_MOVE;
+                if (!is_tap) {
+                    _instance->_dt_have = false;
+                } else if (_instance->_dt_have &&
+                           (now - _instance->_dt_ms) < DT_GAP_MS &&
+                           abs(sx - _instance->_dt_x) <= DT_DIST &&
+                           abs(sy - _instance->_dt_y) <= DT_DIST) {
+                    _instance->_dt_have = false;
+                    if (_instance->onDoubleTapTop) _instance->onDoubleTapTop();
+                } else {
+                    _instance->_dt_have = true;
+                    _instance->_dt_ms   = now;
+                    _instance->_dt_x    = (int16_t)sx;
+                    _instance->_dt_y    = (int16_t)sy;
+                }
+            }
             int32_t screen_h = (_instance->_rotation == 1 || _instance->_rotation == 3)
                                ? PDA2_SCREEN_W
                                : PDA2_SCREEN_H;
@@ -197,10 +243,12 @@ void Touch_Class::_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
             bool started_mid  = _swipe_start_y >= (screen_h * MID_SWIPE_MIN_PCT / 100) &&
                                 _swipe_start_y <= (screen_h * MID_SWIPE_MAX_PCT / 100);
 
-            if (started_low && moved_up && fast_enough) {
-                if (_instance && _instance->onHomeGesture) {
-                    _instance->onHomeGesture();
-                }
+            if (_instance->_home_active) {
+                const bool fire = _instance->_home_dy >= screen_h / SWIPE_UP_TRAVEL_DIV;
+                _instance->_home_active = false;
+                _instance->_home_dy     = 0;
+                if (_instance->onHomeDragEnd) _instance->onHomeDragEnd();
+                if (fire && _instance->onHomeGesture) _instance->onHomeGesture();
             } else if (started_mid && moved_up && fast_enough && !_scroll_seen) {
                 if (_instance && _instance->onSwipeUpMid) {
                     _instance->onSwipeUpMid();
@@ -231,6 +279,7 @@ void Touch_Class::begin(uint8_t rotation) {
     _indev = lv_indev_create();
     lv_indev_set_type(_indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(_indev, _read_cb);
+    lv_indev_set_long_press_time(_indev, PDA2_LONG_PRESS_MS);   // новая строка
 
     _ok = true;
     PDA_LOGI("touch", "touch ok, LVGL indev created");

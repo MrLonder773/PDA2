@@ -22,6 +22,7 @@
 #include "apps/clock/ClockApp.h"
 #include "apps/bluetooth/BluetoothApp.h"
 #include "apps/tinygltest/TinyGLTestApp.h"
+#include "apps/keyboard/KeyboardTestApp.h"
 
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
@@ -32,6 +33,7 @@ int main(int argc, char** argv) {
     PDA.Apps.add(new ClockApp());
     PDA.Apps.add(new BluetoothApp());
     PDA.Apps.add(new TinyGLTestApp());
+    PDA.Apps.add(new KeyboardTestApp());
 
     PDA.Apps.start();
 
@@ -40,6 +42,7 @@ int main(int argc, char** argv) {
     PDA.notify("ClockApp", "Test notification");
     PDA.notify("NotesApp", "File saved");
 
+    // PDA.toast("−12 -12.5 °C ± × ÷ №",7000);
     while (!pda2_platform_should_quit()) {
         PDA.update();
         pda2_platform_sleep_ms(5);

@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 — Apps_Class.cpp
+//  Ядро: реестр приложений, open/close, tick.
 // ════════════════════════════════════════════════════════
 
 #include <PDA2.h>
@@ -8,17 +9,7 @@
 #include "../pda2_log.h"
 #include "../pda2_platform.h"
 
-extern const lv_font_t pda2_cyrillic_16;
-static Apps_Class* _apps_instance = nullptr;
-
-// ── Цвета иконок (по кругу) ──────────────────────────────
-static const uint32_t _icon_colors[] = {
-    0x2d64f0, 0x26a43d, 0x7732d2, 0x7e7e7e,
-    0x0fbbd9, 0xf97316, 0x0ea5e9, 0xef4444,
-    0x8b5cf6, 0x14b8a6, 0xdc2626, 0x22c55e,
-    0xe879f9, 0xfbbf24, 0x34d399, 0xf472b6,
-};
-static const uint8_t _n_colors = sizeof(_icon_colors) / sizeof(_icon_colors[0]);
+Apps_Class* Apps_Class::_instance = nullptr;
 
 // ── add / start ──────────────────────────────────────────
 void Apps_Class::add(PDA2App* app) {
@@ -31,7 +22,7 @@ void Apps_Class::add(PDA2App* app) {
 }
 
 void Apps_Class::start() {
-    _apps_instance = this;
+    _instance = this;
 
     for (uint8_t i = 0; i < _count; i++) {
         if (_apps[i]) {
@@ -41,6 +32,7 @@ void Apps_Class::start() {
     }
 
     _build_launcher();
+    _build_toast();
     lv_screen_load(_screen_launcher);
 
     PDA_LOGI("apps", "Launcher ready. %d app(s) registered.", _count);
@@ -59,7 +51,7 @@ void Apps_Class::open(uint8_t id) {
     }
 
     lv_obj_t* prev_screen = _apps[id]->screen;
-    
+
     _apps[id]->onOpen();   // строит screen лениво, если его ещё нет
 
     if (!_apps[id]->screen) {
@@ -78,11 +70,12 @@ void Apps_Class::open(uint8_t id) {
 
     lv_screen_load_anim(
         _apps[id]->screen,
-        LV_SCR_LOAD_ANIM_MOVE_LEFT,
+        LV_SCR_LOAD_ANIM_FADE_IN,
         PDA2_ANIM_MS, 0, false
     );
 
     PDA_LOGI("apps", "Opened: %s", _apps[id]->name);
+    PDA.Memory.log("app opened");
 }
 
 void Apps_Class::close() {
@@ -90,13 +83,13 @@ void Apps_Class::close() {
 
     _apps[_current_id]->onClose();   // ⚠️ только состояние, screen не трогать
     PDA_LOGI("apps", "Closed: %s", _apps[_current_id]->name);
-
+    PDA.Memory.log("app closed (screen ещё жив)");
     _current_id = -1;
     _is_open    = false;
 
     lv_screen_load_anim(
         _screen_launcher,
-        LV_SCR_LOAD_ANIM_MOVE_RIGHT,
+        LV_SCR_LOAD_ANIM_FADE_IN,
         PDA2_ANIM_MS, 0, true   // auto_del=true — LVGL сам удалит app-экран после анимации
     );
 }
@@ -109,17 +102,6 @@ void Apps_Class::_screen_del_cb(lv_event_t* e) {
 
 // ── tick ─────────────────────────────────────────────────
 void Apps_Class::tick(uint32_t delta_ms) {
-    _clock_last_ms += delta_ms;
-    if (_clock_last_ms >= 1000) {
-        _clock_last_ms = 0;
-        if (PDA.Rtc.ok()) {
-            pda2_time_t t = PDA.Rtc.get();
-            char buf[6];
-            snprintf(buf, sizeof(buf), "%02d:%02d", t.hour, t.minute);
-            lv_label_set_text(_lbl_time, buf);
-        }
-    }
-
     if (_is_open && _current_id >= 0 && _apps[_current_id]) {
         _apps[_current_id]->onTick(delta_ms);
     }
@@ -140,184 +122,3 @@ PDA2App* Apps_Class::current() {
 }
 bool    Apps_Class::isOpen()  { return _is_open; }
 uint8_t Apps_Class::count()   { return _count; }
-
-// ── showToast ─────────────────────────────────────────────
-void Apps_Class::showToast(const char* text, uint32_t ms) {
-    if (!_toast_cont || !_toast_label) return;
-    lv_label_set_text(_toast_label, text);
-    lv_obj_clear_flag(_toast_cont, LV_OBJ_FLAG_HIDDEN);
-    _toast_until = pda2_platform_now_ms() + ms;
-    PDA_LOGI("apps", "Toast: %s (%ums)", text, ms);
-}
-
-void Apps_Class::_tick_toast(uint32_t now) {
-    if (!_toast_cont) return;
-    if (lv_obj_has_flag(_toast_cont, LV_OBJ_FLAG_HIDDEN)) return;
-    if (now >= _toast_until) {
-        lv_obj_add_flag(_toast_cont, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-// ── Launcher button callback ──────────────────────────────
-void Apps_Class::_btn_cb(lv_event_t* e) {
-    if (!_apps_instance) return;
-    uint8_t id = (uint8_t)(uintptr_t)lv_event_get_user_data(e);
-    _apps_instance->open(id);
-}
-
-// ── Build launcher ────────────────────────────────────────
-void Apps_Class::_build_launcher() {
-    _screen_launcher = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(_screen_launcher, lv_color_hex(0x1a2438), 0);
-    lv_obj_set_style_bg_opa(_screen_launcher, LV_OPA_COVER, 0);
-    lv_obj_clear_flag(_screen_launcher, LV_OBJ_FLAG_SCROLLABLE);
-
-    lv_obj_t* bar = lv_obj_create(_screen_launcher);
-    lv_obj_set_size(bar, LV_HOR_RES, 28);
-    lv_obj_align(bar, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_set_style_bg_opa(bar, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(bar, 0, 0);
-    lv_obj_set_style_pad_hor(bar, 14, 0);
-    lv_obj_set_style_pad_ver(bar, 0, 0);
-    lv_obj_clear_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
-
-    _lbl_time = lv_label_create(bar);
-    lv_label_set_text(_lbl_time, "--:--");
-    lv_obj_set_style_text_color(_lbl_time, lv_color_hex(0xffffff), 0);
-    lv_obj_set_style_text_font(_lbl_time, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_bg_opa(_lbl_time, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(_lbl_time, lv_color_hex(0x1a2438), 0);
-    lv_obj_align(_lbl_time, LV_ALIGN_CENTER, 0, 0);
-
-    static const lv_coord_t GAP = 16;
-    static const lv_coord_t CELL_W = (LV_HOR_RES - 28) / 4;   // 4 ячейки в ряд на всю ширину сетки
-
-    lv_obj_t* grid = lv_obj_create(_screen_launcher);
-    lv_obj_set_size(grid, LV_HOR_RES, LV_VER_RES - 28);
-    lv_obj_align(grid, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_bg_opa(grid, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(grid, 0, 0);
-    lv_obj_set_style_pad_left(grid, 14, 0);
-    lv_obj_set_style_pad_right(grid, 14, 0);
-    lv_obj_set_style_pad_top(grid, 14, 0);
-    lv_obj_set_style_pad_bottom(grid, 14, 0);
-    lv_obj_set_style_pad_row(grid, GAP, 0);
-    lv_obj_set_style_pad_column(grid, 0, 0);   // расстояние задаёт ширина ячейки
-    lv_obj_set_layout(grid, LV_LAYOUT_FLEX);
-    lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_START,
-                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
-
-    for (uint8_t i = 0; i < _count; i++) {
-        lv_obj_t* cell = lv_obj_create(grid);
-        lv_obj_set_size(cell, CELL_W, PDA2_ICON_SIZE + 40);
-        lv_obj_set_style_bg_opa(cell, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_border_width(cell, 0, 0);
-        lv_obj_set_style_pad_all(cell, 0, 0);
-        lv_obj_clear_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_layout(cell, LV_LAYOUT_FLEX);
-        lv_obj_set_flex_flow(cell, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_flex_align(cell, LV_FLEX_ALIGN_START,
-                              LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-        lv_obj_t* btn = lv_btn_create(cell);
-        lv_obj_set_size(btn, PDA2_ICON_SIZE, PDA2_ICON_SIZE);
-        lv_obj_set_style_bg_color(btn, lv_color_hex(_icon_colors[i % _n_colors]), 0);
-        lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(btn, 14, 0);
-        lv_obj_set_style_shadow_width(btn, 0, 0);
-        lv_obj_set_style_border_width(btn, 0, 0);
-        lv_obj_set_style_pad_all(btn, 0, 0);
-        lv_obj_add_event_cb(btn, _btn_cb, LV_EVENT_CLICKED,
-                            (void*)(uintptr_t)i);
-        _icon_btns[i] = btn;
-        lv_obj_set_style_border_color(btn, lv_color_white(), 0);
-
-        char letter[2] = { _apps[i]->name[0], '\0' };
-        lv_obj_t* lbl_icon = lv_label_create(btn);
-        lv_label_set_text(lbl_icon, letter);
-        lv_obj_set_style_text_color(lbl_icon, lv_color_hex(0xffffff), 0);
-        lv_obj_set_style_text_font(lbl_icon, &lv_font_montserrat_20, 0);
-        lv_obj_set_style_bg_opa(lbl_icon, LV_OPA_TRANSP, 0);
-        lv_obj_align(lbl_icon, LV_ALIGN_CENTER, 0, 0);
-
-        lv_obj_t* lbl_name = lv_label_create(cell);
-        lv_label_set_text(lbl_name, _apps[i]->name);
-        lv_obj_set_style_text_color(lbl_name, lv_color_hex(0xffffff), 0);
-        lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_12, 0);
-        lv_obj_set_style_bg_opa(lbl_name, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_text_align(lbl_name, LV_TEXT_ALIGN_CENTER, 0);
-        lv_label_set_long_mode(lbl_name, LV_LABEL_LONG_WRAP);
-        lv_obj_set_width(lbl_name, CELL_W);
-        lv_obj_set_style_pad_top(lbl_name, 4, 0);
-    }
-    _updateLauncherSelection();
-
-    lv_obj_t* layer = lv_layer_top();
-
-    _toast_cont = lv_obj_create(layer);
-    lv_obj_set_size(_toast_cont, lv_pct(70), LV_SIZE_CONTENT);
-    lv_obj_align(_toast_cont, LV_ALIGN_BOTTOM_MID, 0, -40);
-    lv_obj_set_style_bg_color(_toast_cont, lv_color_hex(0x1e3a5f), 0);
-    lv_obj_set_style_bg_opa(_toast_cont, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(_toast_cont, 12, 0);
-    lv_obj_set_style_pad_all(_toast_cont, 10, 0);
-    lv_obj_set_style_border_width(_toast_cont, 0, 0);
-    lv_obj_add_flag(_toast_cont, LV_OBJ_FLAG_HIDDEN);
-
-    _toast_label = lv_label_create(_toast_cont);
-    lv_obj_set_width(_toast_label, lv_pct(100));
-    lv_label_set_long_mode(_toast_label, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_color(_toast_label, lv_color_hex(0xffffff), 0);
-    lv_obj_set_style_text_font(_toast_label, &pda2_cyrillic_16, 0);
-    lv_obj_set_style_text_align(_toast_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_bg_opa(_toast_label, LV_OPA_TRANSP, 0);
-    lv_obj_align(_toast_label, LV_ALIGN_CENTER, 0, 0);
-}
-
-// ── next / prev / openSelected ────────────────────────────
-void Apps_Class::next() {
-    if (_count == 0) return;
-    _selected_id = (_selected_id + 1) % _count;
-    _updateLauncherSelection();
-}
-
-void Apps_Class::prev() {
-    if (_count == 0) return;
-    _selected_id = (_selected_id - 1 + _count) % _count;
-    _updateLauncherSelection();
-}
-
-void Apps_Class::openSelected() {
-    if (_selected_id >= 0 && _selected_id < _count)
-        open((uint8_t)_selected_id);
-}
-
-// ── Подсветка выбранной иконки ────────────────────────────
-void Apps_Class::_updateLauncherSelection() {
-    for (uint8_t i = 0; i < _count; i++) {
-        if (!_icon_btns[i]) continue;
-        lv_obj_set_style_border_width(_icon_btns[i],
-            (i == (uint8_t)_selected_id) ? 2 : 0, 0);
-    }
-}
-
-// ── Клавиатурный колбэк (USB + BLE) ──────────────────────
-void Apps_Class::_key_cb(uint8_t keycode, uint8_t modifier, bool pressed) {
-    if (!pressed || !_apps_instance) return;
-
-    if (_apps_instance->isOpen()) {
-        if (keycode == 41) {
-            _apps_instance->close();
-        } else {
-            PDA2App* app = _apps_instance->current();
-            if (app) app->onKey(keycode, modifier);
-        }
-    } else {
-        switch (keycode) {
-            case 80: case 82: _apps_instance->prev();         break;
-            case 79: case 81: _apps_instance->next();         break;
-            case 40:          _apps_instance->openSelected(); break;
-        }
-    }
-}

@@ -32,6 +32,7 @@
 #include "pda2_config.h"
 #include "pda2_log.h"
 #include "PDA2App.h"
+#include "../src/ui/pda2_ui_tokens.h"
 
 #include "utility/Display_Class.h"
 #include "utility/Fs_Class.h"
@@ -46,6 +47,10 @@
 #include "utility/Rtc_Class.h"
 #include "utility/Imu_Class.h"
 #include "utility/Bme_Class.h"
+#include "utility/Memory_Class.h"
+#include "utility/StatusBar_Class.h"
+#include "utility/HomeBar_Class.h"
+#include "utility/Keyboard_Class.h"
 
 #include <lvgl.h>
 
@@ -72,14 +77,16 @@ public:
     Rtc_Class        Rtc;
     Imu_Class        Imu;
     Bme_Class        Bme;
-
+    Memory_Class     Memory;
+    StatusBar_Class  StatusBar;
+    HomeBar_Class    HomeBar;
+    Keyboard_Class   Keyboard;
+    
     void     begin(config_t cfg = config_t());
     void     update();
     config_t config() const { return config_t{}; }
 
     void     toast(const char* text, uint32_t ms = 2000);
-    uint32_t freeHeap();
-    uint32_t freePsram();
     void     notify(const char* app_name, const char* text);
 
 private:

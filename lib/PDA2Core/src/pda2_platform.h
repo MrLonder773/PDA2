@@ -54,6 +54,19 @@ bool pda2_platform_touch_begin();
 // Возвращает true, если палец/кнопка мыши сейчас нажаты.
 bool pda2_platform_touch_read(int32_t& x, int32_t& y);
 
+// Мультитач. Точка: сырые координаты (как у touch_read, до коррекции rotation),
+// id пальца (старший ниббл байта Y, 0/1) и событие (старшие 2 бита байта X:
+// 0 касание, 1 отрыв, 2 удержание — по логу пробы, не по даташиту).
+// Слоты чипа с пальцами не связаны: пальцы сопоставлять по id.
+struct Pda2TouchPoint {
+    int32_t x, y;
+    uint8_t id;
+    uint8_t ev;
+};
+// Заполняет до двух точек, возвращает их число (0..2).
+// ESP32: одна I2C-транзакция. PC: 0 или 1 точка (мышь), id 0.
+uint8_t pda2_platform_touch_read2(Pda2TouchPoint pts[2]);
+
 // Запрошено ли завершение (крестик окна SDL). На ESP32 всегда false.
 bool pda2_platform_should_quit();
 

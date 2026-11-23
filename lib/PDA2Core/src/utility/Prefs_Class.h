@@ -70,4 +70,13 @@ public:
     void    setTzOffset(int16_t minutes);
     uint8_t getDstRule();
     void    setDstRule(uint8_t rule);
+
+    // LittleFS уже хотя бы раз монтировалась (default false). Fs_Class: пока false,
+    // неудачный mount можно форматировать (первый запуск), когда true — нельзя.
+    bool    getFsMounted();
+    void    setFsMounted(bool val);
+
+    // Статус-бар виден (default true); двойной тап в верхней зоне переключает
+    bool    getStatusBarVisible();
+    void    setStatusBarVisible(bool val);
 };

@@ -1,20 +1,27 @@
 // ════════════════════════════════════════════════════════
 //  PDA 2 — Fs_Class_sim.cpp
-//  Реальная ФС поверх std::filesystem — папки на диске
+//  Backend поверх std::filesystem — папки на диске
 //  рядом с CMakeLists.txt симулятора:
 //    sim/fs_data/internal/   (аналог LittleFS)
 //    sim/fs_data/sd/         (аналог SD, см. PDA2_SIM_SD_AVAILABLE)
+//  Логика (пути, рекурсия, лимиты) — в Fs_Volume.cpp, здесь только
+//  монтирование и тонкий backend.
 //  Компилируется только в сборке симулятора (-DPDA2_SIM).
+//
+//  Имитация битого раздела LittleFS: если на месте fs_data/internal
+//  лежит ФАЙЛ, а не папка, mount не удаётся (см. begin/format).
 // ════════════════════════════════════════════════════════
 
 #include "Fs_Class.h"
 
 #ifdef PDA2_SIM
 
+#include "Fs_Backend.h"
 #include "../pda2_config.h"
 #include "../pda2_log.h"
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <system_error>
 
 namespace fs = std::filesystem;
@@ -22,178 +29,224 @@ namespace fs = std::filesystem;
 static const char* SIM_FS_INTERNAL_ROOT = "fs_data/internal";
 static const char* SIM_FS_SD_ROOT       = "fs_data/sd";
 
-// ── общие хелперы (переиспользуются FsInternal и FsSd) ───
+namespace {
 
-static bool _ensure_root(const char* root) {
+// ── файл ────────────────────────────────────────────────
+
+class SimFile : public FsBackendFile {
+public:
+    SimFile(const fs::path& p, FsOpenMode m)
+        : _path(p), _writing(m != FsOpenMode::Read), _mode(m) {
+        std::ios::openmode om = std::ios::binary;
+        if (m == FsOpenMode::Read)       om |= std::ios::in;
+        else if (m == FsOpenMode::Write) om |= std::ios::out | std::ios::trunc;
+        else                             om |= std::ios::out | std::ios::app;
+        _f.open(p, om);
+    }
+    bool isOpen() const { return _f.is_open(); }
+
+    size_t read(uint8_t* buf, size_t len) override {
+        if (!_f.is_open()) return 0;
+        _f.read(reinterpret_cast<char*>(buf), (std::streamsize)len);
+        return (size_t)_f.gcount();
+    }
+    size_t write(const uint8_t* buf, size_t len) override {
+        if (!_f.is_open()) return 0;
+        _f.write(reinterpret_cast<const char*>(buf), (std::streamsize)len);
+        return _f.good() ? len : 0;
+    }
+    uint64_t size() override {
+        if (_f.is_open()) _f.flush();
+        std::error_code ec;
+        uint64_t s = (uint64_t)fs::file_size(_path, ec);
+        return ec ? 0 : s;
+    }
+    bool seek(uint64_t pos) override {
+        if (!_f.is_open() || _mode == FsOpenMode::Append) return false;
+        _f.clear();                                  // после EOF иначе чтение не вернётся
+        if (_mode == FsOpenMode::Read) _f.seekg((std::streamoff)pos);
+        else                           _f.seekp((std::streamoff)pos);
+        return !_f.fail();
+    }
+    uint64_t tell() override {
+        if (!_f.is_open()) return 0;
+        std::streamoff p = (_mode == FsOpenMode::Read) ? (std::streamoff)_f.tellg()
+                                                       : (std::streamoff)_f.tellp();
+        return p < 0 ? 0 : (uint64_t)p;
+    }
+    bool close() override {
+        if (!_f.is_open()) return true;
+        _f.flush();
+        bool ok = !_writing || !_f.fail();
+        _f.close();
+        return ok;
+    }
+
+private:
+    fs::path     _path;
+    bool         _writing;
+    FsOpenMode   _mode;
+    std::fstream _f;
+};
+
+// ── backend ─────────────────────────────────────────────
+
+class SimBackend : public FsBackend {
+public:
+    explicit SimBackend(const char* root) : _root(root) {}
+
+    bool stat(const std::string& path, bool& isDir, uint64_t& size) override {
+        std::error_code ec;
+        fs::path f = _full(path);
+        fs::file_status st = fs::status(f, ec);
+        if (ec || !fs::exists(st)) return false;
+        isDir = fs::is_directory(st);
+        size = 0;
+        if (!isDir) {
+            uint64_t s = (uint64_t)fs::file_size(f, ec);
+            size = ec ? 0 : s;
+        }
+        return true;
+    }
+
+    bool list(const std::string& dir, std::vector<FsBackendEntry>& out) override {
+        out.clear();
+        std::error_code ec;
+        fs::path d = _full(dir);
+        if (!fs::is_directory(d, ec)) return false;
+        for (auto& entry : fs::directory_iterator(d, ec)) {
+            std::error_code ec2;
+            FsBackendEntry e;
+            e.name  = entry.path().filename().string();
+            e.isDir = entry.is_directory(ec2);
+            e.size  = e.isDir ? 0 : (uint64_t)entry.file_size(ec2);
+            out.push_back(e);
+        }
+        return true;
+    }
+
+    bool makeDir(const std::string& path) override {
+        std::error_code ec;
+        bool created = fs::create_directory(_full(path), ec);
+        return created && !ec;
+    }
+
+    bool removeFile(const std::string& path) override {
+        std::error_code ec;
+        fs::path f = _full(path);
+        if (fs::is_directory(f, ec)) return false;
+        bool removed = fs::remove(f, ec);
+        return removed && !ec;
+    }
+
+    bool removeDir(const std::string& path) override {
+        std::error_code ec;
+        fs::path f = _full(path);
+        if (!fs::is_directory(f, ec)) return false;
+        bool removed = fs::remove(f, ec);               // непустая папка — ошибка
+        return removed && !ec;
+    }
+
+    bool rename(const std::string& from, const std::string& to) override {
+        std::error_code ec;
+        fs::rename(_full(from), _full(to), ec);
+        return !ec;
+    }
+
+    std::unique_ptr<FsBackendFile> open(const std::string& path, FsOpenMode mode) override {
+        std::error_code ec;
+        fs::path f = _full(path);
+        if (fs::is_directory(f, ec)) return nullptr;
+        if (mode == FsOpenMode::Read && !fs::exists(f, ec)) return nullptr;
+        std::unique_ptr<SimFile> file(new SimFile(f, mode));
+        if (!file->isOpen()) return nullptr;
+        return file;
+    }
+
+    uint64_t freeSpace() override {
+        std::error_code ec;
+        fs::space_info si = fs::space(_root, ec);
+        return ec ? 0 : (uint64_t)si.available;
+    }
+    uint64_t totalSpace() override {
+        std::error_code ec;
+        fs::space_info si = fs::space(_root, ec);
+        return ec ? 0 : (uint64_t)si.capacity;
+    }
+
+private:
+    fs::path _full(const std::string& path) const {
+        return _root / fs::path(path).relative_path();
+    }
+    fs::path _root;
+};
+
+SimBackend s_internalBe(SIM_FS_INTERNAL_ROOT);
+SimBackend s_sdBe(SIM_FS_SD_ROOT);
+
+// ── корень ──────────────────────────────────────────────
+
+bool _ensure_root(const char* root) {
     std::error_code ec;
     fs::create_directories(root, ec);
     return !ec;
 }
 
-// root + path, с санитайзингом ".." — приложение не может выйти за пределы root
-static fs::path _full(const char* root, const char* path) {
-    fs::path p = fs::path(root) / fs::path(path).relative_path();
-    fs::path clean;
-    for (auto& part : p) {
-        if (part == "..") continue;   // выкинуть попытки выйти наружу
-        clean /= part;
-    }
-    return clean;
-}
-
-static std::vector<FsEntry> _ls(const char* root, const char* path) {
-    std::vector<FsEntry> result;
+// mount: корень — папка (или её удалось создать). Файл на месте корня = «битый раздел».
+bool _mountRoot(const char* root) {
     std::error_code ec;
-    fs::path dir = _full(root, path);
-    if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec)) return result;
-
-    for (auto& entry : fs::directory_iterator(dir, ec)) {
-        FsEntry e;
-        e.name  = entry.path().filename().string();
-        e.isDir = entry.is_directory();
-        e.size  = e.isDir ? 0 : entry.file_size();
-        result.push_back(e);
-    }
-    return result;
+    if (fs::is_directory(root, ec)) return true;
+    if (fs::exists(root, ec)) return false;
+    return _ensure_root(root);
 }
 
-static size_t _dirSize(const fs::path& p) {
-    size_t total = 0;
+// format: убрать всё по пути корня и создать пустую папку
+bool _formatRoot(const char* root) {
     std::error_code ec;
-    if (!fs::exists(p, ec) || !fs::is_directory(p, ec)) return 0;
-    for (auto& entry : fs::recursive_directory_iterator(p, ec)) {
-        if (!entry.is_directory()) {
-            std::error_code sz_ec;
-            total += entry.file_size(sz_ec);
-        }
-    }
-    return total;
+    fs::remove_all(root, ec);
+    if (ec) return false;
+    return _ensure_root(root);
 }
 
-static bool _copy(const fs::path& from, const fs::path& to) {
-    std::error_code ec;
-    fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
-    return !ec;
-}
+} // namespace
 
 // ════════════════════════════════════════════════════════
 //  FsInternal (sim)
 // ════════════════════════════════════════════════════════
 
 bool FsInternal::begin() {
-    _ok = _ensure_root(SIM_FS_INTERNAL_ROOT);
+    return begin(true);
+}
+
+bool FsInternal::begin(bool allowFormat) {
+    _be = &s_internalBe;
+    _formatted = false;
+    _ok = _mountRoot(SIM_FS_INTERNAL_ROOT);
+    if (!_ok && allowFormat) {
+        PDA_LOGW("fs.int", "sim FS mount failed, formatting");
+        _ok = _formatRoot(SIM_FS_INTERNAL_ROOT);
+        _formatted = _ok;
+    }
     if (_ok)
         PDA_LOGI("fs.int", "sim FS ok (%s). Free: %u / %u MB",
                  SIM_FS_INTERNAL_ROOT,
                  (unsigned)(freeSpace() / (1024ULL * 1024ULL)),
                  (unsigned)(totalSpace() / (1024ULL * 1024ULL)));
+    else if (allowFormat)
+        PDA_LOGE("fs.int", "sim FS mount failed (%s)", SIM_FS_INTERNAL_ROOT);
     else
-        PDA_LOGE("fs.int", "sim FS mkdir failed (%s)", SIM_FS_INTERNAL_ROOT);
+        PDA_LOGE("fs.int", "sim FS mount failed, data kept (not formatted)");
     return _ok;
 }
 
-std::vector<FsEntry> FsInternal::ls(const char* path) {
-    if (!_ok) return {};
-    return _ls(SIM_FS_INTERNAL_ROOT, path);
-}
-
-bool FsInternal::exists(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::exists(_full(SIM_FS_INTERNAL_ROOT, path), ec);
-}
-
-bool FsInternal::isDir(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::is_directory(_full(SIM_FS_INTERNAL_ROOT, path), ec);
-}
-
-bool FsInternal::mkdir(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    fs::create_directories(_full(SIM_FS_INTERNAL_ROOT, path), ec);
-    return !ec;
-}
-
-String FsInternal::read(const char* path) {
-    if (!_ok) return "";
-    std::ifstream f(_full(SIM_FS_INTERNAL_ROOT, path), std::ios::binary);
-    if (!f) return "";
-    return String((std::istreambuf_iterator<char>(f)),
-                   std::istreambuf_iterator<char>());
-}
-
-bool FsInternal::readBytes(const char* path, uint8_t* buf, size_t len) {
-    if (!_ok) return false;
-    std::ifstream f(_full(SIM_FS_INTERNAL_ROOT, path), std::ios::binary);
-    if (!f) return false;
-    f.read(reinterpret_cast<char*>(buf), len);
-    return (size_t)f.gcount() == len;
-}
-
-bool FsInternal::write(const char* path, const String& data) {
-    if (!_ok) return false;
-    std::ofstream f(_full(SIM_FS_INTERNAL_ROOT, path),
-                     std::ios::binary | std::ios::trunc);
-    if (!f) return false;
-    f.write(data.data(), data.size());
-    return f.good();
-}
-
-bool FsInternal::writeBytes(const char* path, const uint8_t* buf, size_t len) {
-    if (!_ok) return false;
-    std::ofstream f(_full(SIM_FS_INTERNAL_ROOT, path),
-                     std::ios::binary | std::ios::trunc);
-    if (!f) return false;
-    f.write(reinterpret_cast<const char*>(buf), len);
-    return f.good();
-}
-
-bool FsInternal::remove(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::remove(_full(SIM_FS_INTERNAL_ROOT, path), ec);
-}
-
-bool FsInternal::rename(const char* from, const char* to) {
-    if (!_ok) return false;
-    std::error_code ec;
-    fs::rename(_full(SIM_FS_INTERNAL_ROOT, from),
-               _full(SIM_FS_INTERNAL_ROOT, to), ec);
-    return !ec;
-}
-
-bool FsInternal::copy(const char* from, const char* to) {
-    if (!_ok) return false;
-    return _copy(_full(SIM_FS_INTERNAL_ROOT, from),
-                 _full(SIM_FS_INTERNAL_ROOT, to));
-}
-
-size_t FsInternal::size(const char* path) {
-    if (!_ok) return 0;
-    std::error_code ec;
-    size_t s = fs::file_size(_full(SIM_FS_INTERNAL_ROOT, path), ec);
-    return ec ? 0 : s;
-}
-
-size_t FsInternal::dirSize(const char* path) {
-    if (!_ok) return 0;
-    return _dirSize(_full(SIM_FS_INTERNAL_ROOT, path));
-}
-
-uint64_t FsInternal::freeSpace() {
-    if (!_ok) return 0;
-    std::error_code ec;
-    fs::space_info si = fs::space(SIM_FS_INTERNAL_ROOT, ec);
-    return ec ? 0 : (uint64_t)si.available;
-}
-
-uint64_t FsInternal::totalSpace() {
-    if (!_ok) return 0;
-    std::error_code ec;
-    fs::space_info si = fs::space(SIM_FS_INTERNAL_ROOT, ec);
-    return ec ? 0 : (uint64_t)si.capacity;
+bool FsInternal::format() {
+    if (_ok) return false;
+    _be = &s_internalBe;
+    _ok = _formatRoot(SIM_FS_INTERNAL_ROOT);
+    _formatted = _ok;
+    if (_ok) PDA_LOGW("fs.int", "sim FS formatted by request");
+    else     PDA_LOGE("fs.int", "sim FS format failed");
+    return _ok;
 }
 
 // ════════════════════════════════════════════════════════
@@ -201,6 +254,7 @@ uint64_t FsInternal::totalSpace() {
 // ════════════════════════════════════════════════════════
 
 bool FsSd::begin() {
+    _be = &s_sdBe;
 #ifdef PDA2_SIM_SD_AVAILABLE
     #if PDA2_SIM_SD_AVAILABLE
         _ok = _ensure_root(SIM_FS_SD_ROOT);
@@ -218,110 +272,6 @@ bool FsSd::begin() {
     else
         PDA_LOGI("fs.sd", "sim SD not available (PDA2_SIM_SD_AVAILABLE)");
     return _ok;
-}
-
-std::vector<FsEntry> FsSd::ls(const char* path) {
-    if (!_ok) return {};
-    return _ls(SIM_FS_SD_ROOT, path);
-}
-
-bool FsSd::exists(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::exists(_full(SIM_FS_SD_ROOT, path), ec);
-}
-
-bool FsSd::isDir(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::is_directory(_full(SIM_FS_SD_ROOT, path), ec);
-}
-
-bool FsSd::mkdir(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    fs::create_directories(_full(SIM_FS_SD_ROOT, path), ec);
-    return !ec;
-}
-
-String FsSd::read(const char* path) {
-    if (!_ok) return "";
-    std::ifstream f(_full(SIM_FS_SD_ROOT, path), std::ios::binary);
-    if (!f) return "";
-    return String((std::istreambuf_iterator<char>(f)),
-                   std::istreambuf_iterator<char>());
-}
-
-bool FsSd::readBytes(const char* path, uint8_t* buf, size_t len) {
-    if (!_ok) return false;
-    std::ifstream f(_full(SIM_FS_SD_ROOT, path), std::ios::binary);
-    if (!f) return false;
-    f.read(reinterpret_cast<char*>(buf), len);
-    return (size_t)f.gcount() == len;
-}
-
-bool FsSd::write(const char* path, const String& data) {
-    if (!_ok) return false;
-    std::ofstream f(_full(SIM_FS_SD_ROOT, path),
-                     std::ios::binary | std::ios::trunc);
-    if (!f) return false;
-    f.write(data.data(), data.size());
-    return f.good();
-}
-
-bool FsSd::writeBytes(const char* path, const uint8_t* buf, size_t len) {
-    if (!_ok) return false;
-    std::ofstream f(_full(SIM_FS_SD_ROOT, path),
-                     std::ios::binary | std::ios::trunc);
-    if (!f) return false;
-    f.write(reinterpret_cast<const char*>(buf), len);
-    return f.good();
-}
-
-bool FsSd::remove(const char* path) {
-    if (!_ok) return false;
-    std::error_code ec;
-    return fs::remove(_full(SIM_FS_SD_ROOT, path), ec);
-}
-
-bool FsSd::rename(const char* from, const char* to) {
-    if (!_ok) return false;
-    std::error_code ec;
-    fs::rename(_full(SIM_FS_SD_ROOT, from),
-               _full(SIM_FS_SD_ROOT, to), ec);
-    return !ec;
-}
-
-bool FsSd::copy(const char* from, const char* to) {
-    if (!_ok) return false;
-    return _copy(_full(SIM_FS_SD_ROOT, from),
-                 _full(SIM_FS_SD_ROOT, to));
-}
-
-size_t FsSd::size(const char* path) {
-    if (!_ok) return 0;
-    std::error_code ec;
-    size_t s = fs::file_size(_full(SIM_FS_SD_ROOT, path), ec);
-    return ec ? 0 : s;
-}
-
-size_t FsSd::dirSize(const char* path) {
-    if (!_ok) return 0;
-    return _dirSize(_full(SIM_FS_SD_ROOT, path));
-}
-
-uint64_t FsSd::freeSpace() {
-    if (!_ok) return 0;
-    std::error_code ec;
-    fs::space_info si = fs::space(SIM_FS_SD_ROOT, ec);
-    return ec ? 0 : (uint64_t)si.available;
-}
-
-uint64_t FsSd::totalSpace() {
-    if (!_ok) return 0;
-    std::error_code ec;
-    fs::space_info si = fs::space(SIM_FS_SD_ROOT, ec);
-    return ec ? 0 : (uint64_t)si.capacity;
 }
 
 #endif // PDA2_SIM

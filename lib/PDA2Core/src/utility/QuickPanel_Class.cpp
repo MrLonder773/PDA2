@@ -1,4 +1,4 @@
-#include "QuickPanel_Class.h"
+﻿#include "QuickPanel_Class.h"
 #include <PDA2.h>
 
 // ═══════════════════════════════════════════════════════════
@@ -73,7 +73,7 @@ void QuickPanel_Class::_build_notif_panel() {
     _lbl_empty = lv_label_create(_panel_notif);
     lv_label_set_text(_lbl_empty, "No notifications");
     lv_obj_set_style_text_color(_lbl_empty, lv_color_hex(0x4b5563), 0);
-    lv_obj_set_style_text_font(_lbl_empty, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_lbl_empty, PDA.Fonts.get(14), 0);
     lv_obj_set_style_bg_opa(_lbl_empty, LV_OPA_COVER, 0);   // TEAR-1
     lv_obj_set_style_bg_color(_lbl_empty, lv_color_hex(0x111827), 0);
     lv_obj_center(_lbl_empty);
@@ -101,7 +101,7 @@ void QuickPanel_Class::_build_settings_panel() {
     lv_obj_t* lbl_br = lv_label_create(_panel_settings);
     lv_label_set_text(lbl_br, "Brightness");
     lv_obj_set_style_text_color(lbl_br, lv_color_hex(0x9ca3af), 0);
-    lv_obj_set_style_text_font(lbl_br, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(lbl_br, PDA.Fonts.get(14), 0);
     lv_obj_set_pos(lbl_br, 0, 16);
 
     _slider_br = lv_slider_create(_panel_settings);
@@ -113,7 +113,7 @@ void QuickPanel_Class::_build_settings_panel() {
 
     _lbl_br_val = lv_label_create(_panel_settings);
     lv_obj_set_style_text_color(_lbl_br_val, lv_color_hex(0xffffff), 0);
-    lv_obj_set_style_text_font(_lbl_br_val, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_lbl_br_val, PDA.Fonts.get(14), 0);
     lv_obj_set_style_bg_opa(_lbl_br_val, LV_OPA_COVER, 0);   // TEAR-1
     lv_obj_set_style_bg_color(_lbl_br_val, lv_color_hex(0x111827), 0);
     lv_obj_set_pos(_lbl_br_val, PDA2_SCREEN_W - 70, 52);
@@ -126,7 +126,7 @@ void QuickPanel_Class::_build_settings_panel() {
     _lbl_wifi = lv_label_create(_panel_settings);
     lv_label_set_text(_lbl_wifi, "WiFi");
     lv_obj_set_style_text_color(_lbl_wifi, lv_color_hex(0x9ca3af), 0);
-    lv_obj_set_style_text_font(_lbl_wifi, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_lbl_wifi, PDA.Fonts.get(14), 0);
     lv_obj_set_pos(_lbl_wifi, 0, 110);
 
     _sw_wifi = lv_switch_create(_panel_settings);
@@ -291,7 +291,7 @@ void QuickPanel_Class::_refresh_notif_list() {
         lv_obj_t* lbl_app = lv_label_create(card);
         lv_label_set_text(lbl_app, n.app_name);
         lv_obj_set_style_text_color(lbl_app, lv_color_hex(0xffffff), 0);
-        lv_obj_set_style_text_font(lbl_app, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(lbl_app, PDA.Fonts.get(14), 0);
         lv_obj_set_pos(lbl_app, 0, 0);
 
         lv_obj_t* lbl_time = lv_label_create(card);
@@ -299,7 +299,7 @@ void QuickPanel_Class::_refresh_notif_list() {
         snprintf(tbuf, sizeof(tbuf), "%02d:%02d", n.hour, n.minute);
         lv_label_set_text(lbl_time, tbuf);
         lv_obj_set_style_text_color(lbl_time, lv_color_hex(0x6b7280), 0);
-        lv_obj_set_style_text_font(lbl_time, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(lbl_time, PDA.Fonts.get(12), 0);
         lv_obj_set_style_bg_opa(lbl_time, LV_OPA_COVER, 0);   // TEAR-1
         lv_obj_set_style_bg_color(lbl_time, lv_color_hex(0x1f2937), 0);
         lv_obj_align(lbl_time, LV_ALIGN_TOP_RIGHT, 0, 0);
@@ -309,7 +309,7 @@ void QuickPanel_Class::_refresh_notif_list() {
         lv_label_set_long_mode(lbl_text, LV_LABEL_LONG_WRAP);
         lv_obj_set_width(lbl_text, card_w - 20);
         lv_obj_set_style_text_color(lbl_text, lv_color_hex(0x9ca3af), 0);
-        lv_obj_set_style_text_font(lbl_text, &lv_font_montserrat_12, 0);
+        lv_obj_set_style_text_font(lbl_text, PDA.Fonts.get(12), 0);
         lv_obj_set_pos(lbl_text, 0, 24);
 
         y += CARD_H + CARD_GAP;

@@ -15,13 +15,13 @@
 // ── Дни недели (DS3231: 1=Пн ... 7=Вс) ─────────────────
 const char* ClockApp::_weekday_str(uint8_t wd) {
     switch (wd) {
-        case 1: return "Monday";
-        case 2: return "Tuesday";
-        case 3: return "Wednesday";
-        case 4: return "Thursday";
-        case 5: return "Friday";
-        case 6: return "Saturday";
-        case 7: return "Sunday";
+        case 1: return "Понедельник";
+        case 2: return "Вторник";
+        case 3: return "Среда";
+        case 4: return "Четверг";
+        case 5: return "Пятница";
+        case 6: return "Суббота";
+        case 7: return "Воскресенье";
         default: return "---";
     }
 }
@@ -64,7 +64,7 @@ void ClockApp::onOpen() {
         // ── Дата ─────────────────────────────────────────────
         _lbl_date = lv_label_create(cont);
         lv_label_set_text(_lbl_date, "--- --.--.----");
-        lv_obj_set_style_text_font(_lbl_date, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_font(_lbl_date, PDA.Fonts.get(16), 0);
         lv_obj_set_style_text_color(_lbl_date, lv_color_hex(0xaaaacc), 0);
         lv_obj_set_style_bg_color(_lbl_date, lv_color_hex(0x1a2438), 0);
         lv_obj_set_style_bg_opa(_lbl_date, LV_OPA_COVER, 0);
@@ -123,7 +123,7 @@ void ClockApp::_update_date(const pda2_time_t& t) {
     _prev_month = t.month; // [A-75]
     _prev_year  = t.year;  // [A-75]
 
-    char buf[32];
+    char buf[40];
     snprintf(buf, sizeof(buf), "%s, %02d.%02d.%04d",
              _weekday_str(t.weekday), t.day, t.month, t.year);
     lv_label_set_text(_lbl_date, buf);

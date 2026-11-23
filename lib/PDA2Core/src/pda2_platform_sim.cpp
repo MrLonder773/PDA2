@@ -67,6 +67,13 @@ bool pda2_platform_touch_read(int32_t& x, int32_t& y) {
     return (buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
 }
 
+uint8_t pda2_platform_touch_read2(Pda2TouchPoint pts[2]) {
+    int32_t x, y;
+    if (!pda2_platform_touch_read(x, y)) return 0;
+    pts[0].x = x; pts[0].y = y; pts[0].id = 0; pts[0].ev = 2;
+    return 1;
+}
+
 // ── Quit-флаг ─────────────────────────────────────────────
 // Выставляется из Usb_Class_sim.cpp при виде SDL_QUIT в очереди
 // событий (он же единственный, кто её вычитывает).

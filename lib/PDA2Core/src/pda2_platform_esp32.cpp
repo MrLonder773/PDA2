@@ -87,6 +87,29 @@ bool pda2_platform_touch_read(int32_t& x, int32_t& y) {
     return true;
 }
 
+uint8_t pda2_platform_touch_read2(Pda2TouchPoint pts[2]) {
+    Wire.beginTransmission(PDA2_I2C_TOUCH);
+    Wire.write(0x02);
+    if (Wire.endTransmission(false) != 0) return 0;
+    if (Wire.requestFrom((uint8_t)PDA2_I2C_TOUCH, (uint8_t)11) != 11) return 0;
+    uint8_t b[11];
+    for (uint8_t i = 0; i < 11; i++) b[i] = Wire.read();
+
+    uint8_t n = b[0] & 0x0F;          // число точек
+    if (n > 2) n = 2;
+    uint8_t cnt = 0;
+    for (uint8_t s = 0; s < n; s++) {
+        const uint8_t* p = &b[s == 0 ? 1 : 7];   // слот 1: 0x03..0x06, слот 2: 0x09..0x0C
+        if (p[0] == 0xFF && p[1] == 0xFF && p[2] == 0xFF && p[3] == 0xFF) continue;
+        pts[cnt].x  = ((int32_t)(p[0] & 0x0F) << 8) | p[1];
+        pts[cnt].y  = ((int32_t)(p[2] & 0x0F) << 8) | p[3];
+        pts[cnt].id = p[2] >> 4;
+        pts[cnt].ev = p[0] >> 6;
+        cnt++;
+    }
+    return cnt;
+}
+
 bool pda2_platform_should_quit() {
     return false; // на железе некуда "закрывать окно"
 }

@@ -107,4 +107,10 @@ void    Prefs_Class::setTzOffset(int16_t min) { _prefs.putShort("tz_off", min); 
 uint8_t Prefs_Class::getDstRule()             { return _prefs.getUChar("dst_rule", 1); }
 void    Prefs_Class::setDstRule(uint8_t rule) { _prefs.putUChar("dst_rule", rule); }
 
+bool Prefs_Class::getFsMounted()           { return _prefs.getBool("fs_mounted", false); }
+void Prefs_Class::setFsMounted(bool val)   { _prefs.putBool("fs_mounted", val); }
+
+bool Prefs_Class::getStatusBarVisible()         { return _prefs.getBool("sb_vis", true); }
+void Prefs_Class::setStatusBarVisible(bool val) { _prefs.putBool("sb_vis", val); }
+
 #endif // !PDA2_SIM
