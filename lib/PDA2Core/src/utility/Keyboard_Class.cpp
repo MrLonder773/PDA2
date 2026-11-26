@@ -13,18 +13,23 @@
 #include <string.h>
 #include "../pda2_platform.h"
 
-// Страница → режим lv_keyboard (в порядке enum Page)
+// Страница → режим lv_keyboard (в порядке enum Page).
+// Страницы символов делят TEXT_UPPER: карту подставляет _set_sym_map().
 static const lv_keyboard_mode_t PAGE_MODE[] = {
     LV_KEYBOARD_MODE_USER_1, LV_KEYBOARD_MODE_USER_2,
     LV_KEYBOARD_MODE_USER_3, LV_KEYBOARD_MODE_USER_4,
     LV_KEYBOARD_MODE_SPECIAL, LV_KEYBOARD_MODE_NUMBER,
-    LV_KEYBOARD_MODE_TEXT_LOWER };
+    LV_KEYBOARD_MODE_TEXT_LOWER,
+    LV_KEYBOARD_MODE_TEXT_UPPER, LV_KEYBOARD_MODE_TEXT_UPPER };
 
 // ── attach ────────────────────────────────────────────────
 void Keyboard_Class::attach(lv_obj_t* parent, lv_obj_t* field, KbType type) {
     if (_kb) return;
 
     _kb = lv_keyboard_create(parent);
+    // Штатный обработчик нам не нужен: он перехватывает подписи abc/ABC/1# и
+    // LV_SYMBOL_CLOSE/KEYBOARD/OK (переключает режим, шлёт CANCEL/READY). Всё разбираем сами.
+    lv_obj_remove_event_cb(_kb, lv_keyboard_def_event_cb);
     lv_obj_set_size(_kb, PDA2_SCREEN_W, PDA2_KB_H);
     lv_obj_align(_kb, LV_ALIGN_TOP_LEFT, 0, PDA2_KB_Y);
     lv_keyboard_set_popovers(_kb, false);
@@ -149,6 +154,7 @@ void Keyboard_Class::_push(KbEventType t, const char* utf8) {
 // ── смена страницы ────────────────────────────────────────
 void Keyboard_Class::_show(Page p) {
     _page = p;
+    if (p == P_SYM_RU || p == P_SYM_EN) _set_sym_map(p);   // карта символов в общий режим
     lv_keyboard_set_mode(_kb, PAGE_MODE[p]);
     _sync_hints();
     _popup_hide();
@@ -158,23 +164,26 @@ void Keyboard_Class::_show(Page p) {
 void Keyboard_Class::_handle(const char* txt) {
     const bool upper = (_page == P_RU_UP || _page == P_EN_UP);
     const bool num   = (_page == P_NUM_RU || _page == P_NUM_EN);
+    const bool sym   = (_page == P_SYM_RU || _page == P_SYM_EN);
     const Page lower = _lang_en ? P_EN_LO : P_RU_LO;
 
     if (!strcmp(txt, " ")) return;   // скрытая прокладка
 
-    if (!strcmp(txt, "^") || !strcmp(txt, "^^")) {
+    if (!strcmp(txt, KB_KEY_SHIFT) || !strcmp(txt, KB_KEY_SHIFT_UP)) {
         if (_lang_en) _show(upper ? P_EN_LO : P_EN_UP);
         else          _show(upper ? P_RU_LO : P_RU_UP);
         return;
     }
-    if (!strcmp(txt, "<")) { _push(KB_BACKSPACE, ""); return; }
-    if (!strcmp(txt, ">")) { _push(KB_ENTER, "");     return; }
-    if (!strcmp(txt, "123")) { _show(_lang_en ? P_NUM_EN : P_NUM_RU); return; }
-    if (!strcmp(txt, "РУС") || !strcmp(txt, "ENG")) { _show(lower); return; }
+    if (!strcmp(txt, KB_KEY_BS))    { _push(KB_BACKSPACE, ""); return; }
+    if (!strcmp(txt, KB_KEY_ENTER)) { _push(KB_ENTER, "");     return; }
+    if (!strcmp(txt, KB_KEY_NUM)) { _show(_lang_en ? P_NUM_EN : P_NUM_RU); return; }
+    if (!strcmp(txt, KB_KEY_SYM)) { _show(_lang_en ? P_SYM_EN : P_SYM_RU); return; }
+    if (!strcmp(txt, KB_KEY_ABC_RU) || !strcmp(txt, KB_KEY_ABC_EN)) { _show(lower); return; }
     if (!strcmp(txt, "EN") || !strcmp(txt, "RU")) {
         _lang_en = !strcmp(txt, "EN");   // подпись = язык, на который переключаемся
-        if (num) _show(_lang_en ? P_NUM_EN : P_NUM_RU);
-        else     _show(_lang_en ? P_EN_LO  : P_RU_LO);
+        if (num)      _show(_lang_en ? P_NUM_EN : P_NUM_RU);
+        else if (sym) _show(_lang_en ? P_SYM_EN : P_SYM_RU);
+        else          _show(_lang_en ? P_EN_LO  : P_RU_LO);
         return;
     }
     if (!strcmp(txt, "Русский") || !strcmp(txt, "English")) {
@@ -195,7 +204,7 @@ void Keyboard_Class::_event_cb(lv_event_t* e) {
     if (id == LV_BUTTONMATRIX_BUTTON_NONE) return;
     const char* txt = lv_buttonmatrix_get_button_text(obj, id);
     if (txt == NULL) return;
-    if (self->_bs_hold && !strcmp(txt, "<")) return;   // повтор ⌫ ведёт get()
+    if (self->_bs_hold && !strcmp(txt, KB_KEY_BS)) return;   // повтор ⌫ ведёт get()
     // Долгое нажатие запомнило подсказку: на отпускании вводим её вместо буквы,
     // если отпустили на той же клавише. Запомненное расходуется в любом случае.
     if (self->_long_hint) {

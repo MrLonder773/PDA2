@@ -5,10 +5,11 @@
 //  Карты клавиатуры: ширина клавиши — число в ctrl-карте (1..15).
 //  Цифровая страница (тип NUMBER): 4 колонки, нижний ряд «0» и «>» по 2.
 //  RU: 11 колонок, все ряды 11 единиц.
-//  EN и 123: 10 колонок, ряды по 20 единиц (клавиша = 2),
+//  EN, 123 и символы: 10 колонок, ряды по 20 единиц (клавиша = 2),
 //  скрытые «прокладки» центрируют ряд из 9 клавиш.
-//  Подписи-заглушки (до глифов): ^ ⇧, ^^ ⇧ (верхний регистр),
-//  < ⌫, > ↵, RU/EN — глобус.
+//  Служебные клавиши — макросы KB_KEY_* из Keyboard_Class.h:
+//  ↑ (шрифт pda2_cyrillic_*), ⌫ и ↵ (LV_SYMBOL_*, запасной шрифт Montserrat).
+//  Страницы 123 и символов (=\<) переключаются клавишами ?123 и =\<.
 //  _apply_layout(): карты страниц и внешний вид клавиш.
 // ════════════════════════════════════════════════════════
 
@@ -23,59 +24,71 @@
 static const char* const MAP_RU_LO[] = {
     "й","ц","у","к","е","н","г","ш","щ","з","х","\n",
     "ф","ы","в","а","п","р","о","л","д","ж","э","\n",
-    "^","я","ч","с","м","и","т","ь","б","ю","<","\n",
-    "123",",","EN","Русский",".",">","" };
+    KB_KEY_SHIFT,"я","ч","с","м","и","т","ь","б","ю",KB_KEY_BS,"\n",
+    KB_KEY_NUM,",","EN","Русский",".",KB_KEY_ENTER,"" };
 static const char* const MAP_RU_UP[] = {
     "Й","Ц","У","К","Е","Н","Г","Ш","Щ","З","Х","\n",
     "Ф","Ы","В","А","П","Р","О","Л","Д","Ж","Э","\n",
-    "^^","Я","Ч","С","М","И","Т","Ь","Б","Ю","<","\n",
-    "123",",","EN","Русский",".",">","" };
+    KB_KEY_SHIFT_UP,"Я","Ч","С","М","И","Т","Ь","Б","Ю",KB_KEY_BS,"\n",
+    KB_KEY_NUM,",","EN","Русский",".",KB_KEY_ENTER,"" };
 static const lv_buttonmatrix_ctrl_t CTRL_RU[] = {
     KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),
     KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),
     KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KW(1),KR(1),
-    KW(1),KW(1),KW(1),KW(4),KW(1),KW(2) };
+    KW(3),KW(2),KW(2),KW(8),KW(2),KW(3) };
 
 // ── EN (10 колонок) ──────────────────────────────────────
 static const char* const MAP_EN_LO[] = {
     "q","w","e","r","t","y","u","i","o","p","\n",
     " ","a","s","d","f","g","h","j","k","l"," ","\n",
-    "^","z","x","c","v","b","n","m","<","\n",
-    "123",",","RU","English",".",">","" };
+    KB_KEY_SHIFT,"z","x","c","v","b","n","m",KB_KEY_BS,"\n",
+    KB_KEY_NUM,",","RU","English",".",KB_KEY_ENTER,"" };
 static const char* const MAP_EN_UP[] = {
     "Q","W","E","R","T","Y","U","I","O","P","\n",
     " ","A","S","D","F","G","H","J","K","L"," ","\n",
-    "^^","Z","X","C","V","B","N","M","<","\n",
-    "123",",","RU","English",".",">","" };
+    KB_KEY_SHIFT_UP,"Z","X","C","V","B","N","M",KB_KEY_BS,"\n",
+    KB_KEY_NUM,",","RU","English",".",KB_KEY_ENTER,"" };
 static const lv_buttonmatrix_ctrl_t CTRL_EN[] = {
     KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),
     KH(1),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KH(1),
     KW(3),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KR(3),
-    KW(1),KW(1),KW(1),KW(4),KW(1),KW(2) };
+    KW(3),KW(2),KW(2),KW(8),KW(2),KW(3) };
 
-// ── 123 (две карты: отличаются левой клавишей и подписью пробела) ──
+// ── ?123 (две карты: отличаются левой клавишей и подписью пробела) ──
 static const char* const MAP_NUM_RU[] = {
     "1","2","3","4","5","6","7","8","9","0","\n",
-    "-","/",":",";","(",")","@","#","&","\"","\n",
-    "+","%","_","=","?","!","'","*","<","\n",
-    "РУС",",","EN","Русский",".",">","" };
+    "@","#","$","_","&","-","+","(",")","/","\n",
+    KB_KEY_SYM,"*","\"","'",":",";","!","?",KB_KEY_BS,"\n",
+    KB_KEY_ABC_RU,",","EN","Русский",".",KB_KEY_ENTER,"" };
 static const char* const MAP_NUM_EN[] = {
     "1","2","3","4","5","6","7","8","9","0","\n",
-    "-","/",":",";","(",")","@","#","&","\"","\n",
-    "+","%","_","=","?","!","'","*","<","\n",
-    "ENG",",","RU","English",".",">","" };
+    "@","#","$","_","&","-","+","(",")","/","\n",
+    KB_KEY_SYM,"*","\"","'",":",";","!","?",KB_KEY_BS,"\n",
+    KB_KEY_ABC_EN,",","RU","English",".",KB_KEY_ENTER,"" };
 static const lv_buttonmatrix_ctrl_t CTRL_NUM[] = {
     KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),
     KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),
-    KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KR(4),
+    KW(3),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KW(2),KR(3),
     KW(3),KW(2),KW(2),KW(8),KW(2),KW(3) };
+
+// ── =\< (символы; та же сетка, что у ?123, поэтому ctrl-карта общая) ──
+static const char* const MAP_SYM_RU[] = {
+    "[","]","{","}","<",">","^","~","|","\\","\n",
+    "=","+","−","×","÷","%","№","°","«","»","\n",
+    KB_KEY_NUM,"€","£","₴","©","™","—","…",KB_KEY_BS,"\n",
+    KB_KEY_ABC_RU,",","EN","Русский",".",KB_KEY_ENTER,"" };
+static const char* const MAP_SYM_EN[] = {
+    "[","]","{","}","<",">","^","~","|","\\","\n",
+    "=","+","−","×","÷","%","№","°","«","»","\n",
+    KB_KEY_NUM,"€","£","₴","©","™","—","…",KB_KEY_BS,"\n",
+    KB_KEY_ABC_EN,",","RU","English",".",KB_KEY_ENTER,"" };
 
 // ── Цифровая страница (тип NUMBER): 4 колонки, ⌫ с автоповтором ──
 static const char* const MAP_PAD[] = {
-    "1","2","3","<","\n",
+    "1","2","3",KB_KEY_BS,"\n",
     "4","5","6","-","\n",
     "7","8","9",".","\n",
-    "0",">","" };
+    "0",KB_KEY_ENTER,"" };
 static const lv_buttonmatrix_ctrl_t CTRL_PAD[] = {
     KW(1),KW(1),KW(1),KR(1),
     KW(1),KW(1),KW(1),KW(1),
@@ -84,6 +97,9 @@ static const lv_buttonmatrix_ctrl_t CTRL_PAD[] = {
 
 // ── карты страниц и внешний вид клавиш ────────────────────
 // Вызывается из attach() сразу после создания _kb.
+// Страницы символов (P_SYM_RU / P_SYM_EN) делят один режим lv_keyboard
+// (TEXT_UPPER): свободных режимов не хватает на две карты. Карту в него
+// подставляет _set_sym_map() при каждом показе страницы.
 void Keyboard_Class::_apply_layout() {
     lv_keyboard_set_map(_kb, LV_KEYBOARD_MODE_USER_1,  MAP_RU_LO,  CTRL_RU);
     lv_keyboard_set_map(_kb, LV_KEYBOARD_MODE_USER_2,  MAP_RU_UP,  CTRL_RU);
@@ -111,6 +127,12 @@ void Keyboard_Class::_apply_layout() {
     lv_obj_set_style_bg_color(_kb, lv_color_hex(0x4A5A7C), (lv_style_selector_t)LV_PART_ITEMS | (lv_style_selector_t)LV_STATE_PRESSED);
 }
 
+// Подставить карту страницы символов в общий режим TEXT_UPPER (вызывает _show).
+void Keyboard_Class::_set_sym_map(Page p) {
+    lv_keyboard_set_map(_kb, LV_KEYBOARD_MODE_TEXT_UPPER,
+                        p == P_SYM_RU ? MAP_SYM_RU : MAP_SYM_EN, CTRL_NUM);
+}
+
 // Прямоугольник клавиши по id (по карте текущей страницы). Ширина — число в ctrl-карте
 // (младшие 4 бита), в ряду: avail = W - (n-1)*gap, клавиша = avail*units/total.
 bool Keyboard_Class::_key_rect(uint32_t id, int& x, int& y, int& w, int& h) {
@@ -122,6 +144,8 @@ bool Keyboard_Class::_key_rect(uint32_t id, int& x, int& y, int& w, int& h) {
         case P_EN_UP:  map = MAP_EN_UP;  ctl = CTRL_EN;  break;
         case P_NUM_RU: map = MAP_NUM_RU; ctl = CTRL_NUM; break;
         case P_NUM_EN: map = MAP_NUM_EN; ctl = CTRL_NUM; break;
+        case P_SYM_RU: map = MAP_SYM_RU; ctl = CTRL_NUM; break;
+        case P_SYM_EN: map = MAP_SYM_EN; ctl = CTRL_NUM; break;
         default:       map = MAP_PAD;    ctl = CTRL_PAD; break;
     }
     const int W = PDA2_SCREEN_W, H = PDA2_KB_H, G = PDA2_KB_GAP;

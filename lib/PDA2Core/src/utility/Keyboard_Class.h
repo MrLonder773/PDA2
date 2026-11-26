@@ -30,6 +30,16 @@
 #include <lvgl.h>
 #include "../pda2_config.h"
 
+// Подписи служебных клавиш (карты и разбор используют одни макросы)
+#define KB_KEY_SHIFT     "↑"
+#define KB_KEY_SHIFT_UP  "↑↑"
+#define KB_KEY_BS        LV_SYMBOL_BACKSPACE
+#define KB_KEY_ENTER     LV_SYMBOL_NEW_LINE
+#define KB_KEY_NUM       "?123"
+#define KB_KEY_SYM       "=\\<"
+#define KB_KEY_ABC_RU    "АБВ"
+#define KB_KEY_ABC_EN    "ABC"
+
 enum KbEventType : uint8_t {
     KB_CHAR = 1,      // utf8 — введённый символ (пробел тоже)
     KB_BACKSPACE,
@@ -77,7 +87,7 @@ public:
     bool attached() const { return _kb != nullptr; }
 
 private:
-    enum Page : uint8_t { P_RU_LO, P_RU_UP, P_EN_LO, P_EN_UP, P_NUM_RU, P_NUM_EN, P_PAD };
+    enum Page : uint8_t { P_RU_LO, P_RU_UP, P_EN_LO, P_EN_UP, P_NUM_RU, P_NUM_EN, P_PAD, P_SYM_RU, P_SYM_EN };
 
     struct Bind {                    // user_data колбэка поля
         Keyboard_Class* self = nullptr;
@@ -141,6 +151,7 @@ private:
 
     void _popup_show(uint32_t id, const char* txt);
     void _cells_show(uint32_t id);
+    void _set_sym_map(Page p);   // Keyboard_Layout.cpp
 
     static void _event_cb(lv_event_t* e);
     static void _touch_cb(lv_event_t* e);   // PRESSED/RELEASED/PRESS_LOST прячут попап; LONG_PRESSED запоминает подсказку и показывает попап

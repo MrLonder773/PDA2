@@ -26,7 +26,7 @@ static const uint8_t N_HINTS_RU = sizeof(HINTS_RU) / sizeof(HINTS_RU[0]);
 
 // Клавиши без попапа на нажатии: служебные и пробел (подписи как в картах).
 static bool is_char_key(const char* t) {
-    static const char* const ctl[] = {"^","^^","<",">","123","РУС","ENG","EN","RU"," ","Русский","English"};
+    static const char* const ctl[] = {KB_KEY_SHIFT,KB_KEY_SHIFT_UP,KB_KEY_BS,KB_KEY_ENTER,KB_KEY_NUM,KB_KEY_SYM,KB_KEY_ABC_RU,KB_KEY_ABC_EN,"EN","RU"," ","Русский","English"};
     for (uint8_t i = 0; i < sizeof(ctl) / sizeof(ctl[0]); i++) if (!strcmp(t, ctl[i])) return false;
     return true;
 }
@@ -244,7 +244,7 @@ void Keyboard_Class::_touch_cb(lv_event_t* e) {
     const char* txt = lv_buttonmatrix_get_button_text(obj, id);
     if (txt == NULL) return;
 
-    if (!strcmp(txt, "<")) {             // ⌫ на любой странице: свой автоповтор
+    if (!strcmp(txt, KB_KEY_BS)) {             // ⌫ на любой странице: свой автоповтор
         self->_bs_hold = true;
         self->_bs_next = pda2_platform_now_ms() + PDA2_KB_BS_MS;
         return;
